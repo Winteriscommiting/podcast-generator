@@ -53,7 +53,7 @@ uploads-backup*/
 
 # Google credentials (use Secret Manager)
 google-credentials.json
-*.json
+# Note: DO NOT exclude package.json or package-lock.json - they're needed for deployment!
 
 # Deployment files
 .gcloudignore
