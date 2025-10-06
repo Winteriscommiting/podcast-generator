@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Podcast Generator</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-podcast"></i>
+                    <span>Podcast Generator</span>
+                </div>
+                <button class="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-tab="documents">
+                    <i class="fas fa-file"></i>
+                    <span>Documents</span>
+                    <span class="nav-badge" id="documents-count">0</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="summaries">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Summaries</span>
+                    <span class="nav-badge" id="summaries-count">0</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="podcasts">
+                    <i class="fas fa-microphone"></i>
+                    <span>Podcasts</span>
+                    <span class="nav-badge" id="podcasts-count">0</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="voice-cloning">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Voice Cloning</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name" id="user-name">Loading...</div>
+                        <div class="user-email" id="user-email">Loading...</div>
+                    </div>
+                    <button class="user-menu-toggle">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
+                <div class="user-menu" id="user-menu">
+                    <a href="#" class="user-menu-item">
+                        <i class="fas fa-user-circle"></i>
+                        <span>Profile</span>
+                    </a>
+                    <a href="#" class="user-menu-item">
+                        <i class="fas fa-bell"></i>
+                        <span>Notifications</span>
+                    </a>
+                    <a href="#" class="user-menu-item" id="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-left">
+                    <h1 class="page-title" id="page-title">Documents</h1>
+                    <div class="breadcrumb">
+                        <span class="breadcrumb-item">Dashboard</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="breadcrumb-item active" id="breadcrumb-active">Documents</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="search-bar">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search..." id="global-search">
+                    </div>
+                    <button class="btn btn-icon" id="theme-toggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button class="btn btn-icon" id="notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge">3</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Documents Tab -->
+                <div class="tab-pane active" id="documents-tab">
+                    <div class="content-header">
+                        <h2>My Documents</h2>
+                        <button class="btn btn-primary" id="upload-btn">
+                            <i class="fas fa-upload"></i>
+                            Upload Document
+                        </button>
+                    </div>
+                    
+                    <div class="content-filters">
+                        <div class="filter-group">
+                            <label for="status-filter">Status:</label>
+                            <select id="status-filter">
+                                <option value="all">All</option>
+                                <option value="pending">Pending</option>
+                                <option value="processing">Processing</option>
+                                <option value="completed">Completed</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="sort-filter">Sort by:</label>
+                            <select id="sort-filter">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="name">Name</option>
+                                <option value="size">Size</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="documents-grid" id="documents-grid">
+                        <!-- Documents will be loaded here -->
+                        <div class="empty-state">
+                            <i class="fas fa-file-upload"></i>
+                            <h3>No documents yet</h3>
+                            <p>Upload your first document to get started</p>
+                            <button class="btn btn-primary" id="empty-upload-btn">
+                                <i class="fas fa-upload"></i>
+                                Upload Document
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summaries Tab -->
+                <div class="tab-pane" id="summaries-tab">
+                    <div class="content-header">
+                        <h2>Document Summaries</h2>
+                        <button class="btn btn-primary" id="bulk-generate-btn">
+                            <i class="fas fa-magic"></i>
+                            Bulk Generate
+                        </button>
+                    </div>
+                    
+                    <div class="stats-dashboard">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="total-documents">0</div>
+                                <div class="stat-label">Total Documents</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="completion-rate">0%</div>
+                                <div class="stat-label">Completion Rate</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-compress-alt"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="avg-compression">0%</div>
+                                <div class="stat-label">Avg. Compression</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="time-saved">0 min</div>
+                                <div class="stat-label">Time Saved</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-filters">
+                        <div class="filter-group">
+                            <label for="summary-status-filter">Status:</label>
+                            <select id="summary-status-filter">
+                                <option value="all">All</option>
+                                <option value="completed">Completed</option>
+                                <option value="pending">Pending</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="summaries-grid" id="summaries-grid">
+                        <!-- Summaries will be loaded here -->
+                        <div class="empty-state">
+                            <i class="fas fa-file-alt"></i>
+                            <h3>No summaries yet</h3>
+                            <p>Generate summaries from your documents</p>
+                            <button class="btn btn-primary" id="empty-generate-btn">
+                                <i class="fas fa-magic"></i>
+                                Generate Summary
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Podcasts Tab -->
+                <div class="tab-pane" id="podcasts-tab">
+                    <div class="content-header">
+                        <h2>My Podcasts</h2>
+                        <button class="btn btn-primary" id="create-podcast-btn">
+                            <i class="fas fa-plus"></i>
+                            Create Podcast
+                        </button>
+                    </div>
+
+                    <div class="content-filters">
+                        <div class="filter-group">
+                            <label for="podcast-status-filter">Status:</label>
+                            <select id="podcast-status-filter">
+                                <option value="all">All</option>
+                                <option value="completed">Completed</option>
+                                <option value="generating">Generating</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="podcasts-grid" id="podcasts-grid">
+                        <!-- Podcasts will be loaded here -->
+                        <div class="empty-state">
+                            <i class="fas fa-microphone"></i>
+                            <h3>No podcasts yet</h3>
+                            <p>Create your first podcast from a document or summary</p>
+                            <button class="btn btn-primary" id="empty-create-btn">
+                                <i class="fas fa-plus"></i>
+                                Create Podcast
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Voice Cloning Tab -->
+                <div class="tab-pane" id="voice-cloning-tab">
+                    <div class="content-header">
+                        <h2>Voice Cloning</h2>
+                    </div>
+                    
+                    <div class="voice-cloning-container">
+                        <div class="voice-cloning-info">
+                            <h3>Create Custom Voices</h3>
+                            <p>Upload a sample of your voice to create a custom voice model for your podcasts.</p>
+                        </div>
+                        
+                        <div class="voice-upload-area">
+                            <div class="upload-zone">
+                                <i class="fas fa-microphone-alt"></i>
+                                <h4>Upload Voice Sample</h4>
+                                <p>Upload a 5-10 minute audio sample in MP3 or WAV format</p>
+                                <button class="btn btn-outline">Choose File</button>
+                            </div>
+                        </div>
+                        
+                        <div class="custom-voices">
+                            <h3>Your Custom Voices</h3>
+                            <div class="voices-grid">
+                                <div class="voice-card">
+                                    <div class="voice-avatar">
+                                        <i class="fas fa-user-circle"></i>
+                                    </div>
+                                    <div class="voice-info">
+                                        <h4>My Voice</h4>
+                                        <p>Created on June 15, 2023</p>
+                                    </div>
+                                    <div class="voice-actions">
+                                        <button type="button" class="btn btn-icon" title="Play">
+                                            <i class="fas fa-play"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-icon" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane" id="settings-tab">
+                    <div class="content-header">
+                        <h2>Settings</h2>
+                    </div>
+                    
+                    <div class="settings-container">
+                        <div class="settings-section">
+                            <h3>Account Settings</h3>
+                            <div class="setting-item">
+                                <label for="user-name-setting">Name</label>
+                                <input type="text" id="user-name-setting" value="John Doe">
+                            </div>
+                            <div class="setting-item">
+                                <label for="user-email-setting">Email</label>
+                                <input type="email" id="user-email-setting" value="john.doe@example.com">
+                            </div>
+                            <button class="btn btn-primary">Save Changes</button>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h3>Preferences</h3>
+                            <div class="setting-item">
+                                <label for="default-voice">Default Voice</label>
+                                <select id="default-voice">
+                                    <option value="default">Default</option>
+                                    <option value="female1">Female US</option>
+                                    <option value="male1">Male US</option>
+                                    <option value="female2">Female UK</option>
+                                    <option value="male2">Male UK</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label for="default-speed">Default Speed</label>
+                                <input type="range" id="default-speed" min="0.5" max="2" step="0.1" value="1">
+                                <span class="range-value">1.0x</span>
+                            </div>
+                            <div class="setting-item">
+                                <label for="auto-summarize">Auto-summarize on upload</label>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="auto-summarize" checked>
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary">Save Preferences</button>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h3>Subscription</h3>
+                            <div class="subscription-info">
+                                <div class="subscription-plan">
+                                    <h4>Current Plan: <span class="plan-name">Pro</span></h4>
+                                    <p>$9/month - Renews on July 15, 2023</p>
+                                </div>
+                                <button class="btn btn-outline">Manage Subscription</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal" id="upload-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Upload Document</h3>
+                <button class="modal-close" id="upload-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-zone" id="upload-zone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h4>Drag and drop your file here</h4>
+                    <p>or</p>
+                    <button class="btn btn-outline" id="browse-btn">Browse Files</button>
+                    <input type="file" id="file-input" accept=".pdf,.docx,.txt" style="display: none;">
+                    <p class="upload-info">Supported formats: PDF, DOCX, TXT (Max 10MB)</p>
+                </div>
+                <div class="file-preview" id="file-preview" style="display: none;">
+                    <div class="file-info">
+                        <i class="fas fa-file" id="file-icon"></i>
+                        <div class="file-details">
+                            <div class="file-name" id="file-name"></div>
+                            <div class="file-size" id="file-size"></div>
+                        </div>
+                        <button class="btn btn-icon" id="remove-file">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="upload-options">
+                        <label class="checkbox">
+                            <input type="checkbox" id="auto-summarize-upload" checked>
+                            <span class="checkmark"></span>
+                            Auto-summarize after upload
+                        </label>
+                    </div>
+                </div>
+                <div class="upload-progress" id="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <div class="progress-text" id="progress-text">Uploading... 0%</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancel-upload">Cancel</button>
+                <button class="btn btn-primary" id="confirm-upload" disabled>Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Podcast Creation Modal -->
+    <div class="modal" id="podcast-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Podcast</h3>
+                <button class="modal-close" id="podcast-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="podcast-document">Select Document</label>
+                    <select id="podcast-document">
+                        <option value="">Choose a document</option>
+                        <!-- Documents will be populated here -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Content Source</label>
+                    <div class="radio-group">
+                        <label class="radio">
+                            <input type="radio" name="content-source" value="full_document" checked>
+                            <span class="radio-mark"></span>
+                            Full Document
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="content-source" value="summary">
+                            <span class="radio-mark"></span>
+                            Summary
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="podcast-title">Title</label>
+                    <input type="text" id="podcast-title" placeholder="Enter podcast title">
+                </div>
+                
+                <div class="form-group">
+                    <label for="podcast-description">Description</label>
+                    <textarea id="podcast-description" placeholder="Enter podcast description (optional)"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="voice-provider">Voice Provider</label>
+                    <select id="voice-provider">
+                        <option value="browser">Browser (Free)</option>
+                        <option value="google">Google TTS</option>
+                        <option value="amazon">Amazon Polly</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="voice-selection">Voice</label>
+                    <select id="voice-selection">
+                        <!-- Voices will be populated based on provider -->
+                    </select>
+                    <button class="btn btn-outline btn-sm" id="preview-voice">
+                        <i class="fas fa-play"></i> Preview
+                    </button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="voice-speed">Speed</label>
+                    <div class="slider-container">
+                        <input type="range" id="voice-speed" min="0.5" max="2" step="0.1" value="1">
+                        <span class="slider-value" id="speed-value">1.0x</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="voice-pitch">Pitch</label>
+                    <div class="slider-container">
+                        <input type="range" id="voice-pitch" min="0.5" max="2" step="0.1" value="1">
+                        <span class="slider-value" id="pitch-value">1.0</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="voice-volume">Volume</label>
+                    <div class="slider-container">
+                        <input type="range" id="voice-volume" min="0.1" max="1" step="0.1" value="1">
+                        <span class="slider-value" id="volume-value">100%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancel-podcast">Cancel</button>
+                <button class="btn btn-primary" id="create-podcast">Create Podcast</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Generate Modal -->
+    <div class="modal" id="bulk-generate-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Bulk Generate Summaries</h3>
+                <button class="modal-close" id="bulk-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Select documents to generate summaries for:</p>
+                <div class="document-list" id="document-list">
+                    <!-- Documents will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="cancel-bulk">Cancel</button>
+                <button class="btn btn-primary" id="confirm-bulk">Generate Summaries</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- View Document Modal -->
+    <div class="modal" id="view-document-modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="view-document-title">Document Content</h3>
+                <button class="modal-close" id="view-document-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="document-info">
+                    <div class="info-row">
+                        <span class="info-label">File Name:</span>
+                        <span class="info-value" id="view-doc-filename">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">File Type:</span>
+                        <span class="info-value" id="view-doc-filetype">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Word Count:</span>
+                        <span class="info-value" id="view-doc-wordcount">-</span>
+                    </div>
+                </div>
+                <div class="content-viewer">
+                    <pre id="view-document-content" style="white-space: pre-wrap; max-height: 500px; overflow-y: auto; padding: 15px; background: #f5f5f5; border-radius: 5px;">Loading...</pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="copy-document-content">
+                    <i class="fas fa-copy"></i> Copy Content
+                </button>
+                <button class="btn btn-primary" id="close-view-document">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Summary Modal -->
+    <div class="modal" id="view-summary-modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>Summary Content</h3>
+                <button class="modal-close" id="view-summary-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="summary-comparison">
+                    <div class="comparison-section">
+                        <h4>Summary</h4>
+                        <div class="document-info">
+                            <div class="info-row">
+                                <span class="info-label">Word Count:</span>
+                                <span class="info-value" id="view-summary-wordcount">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Compression:</span>
+                                <span class="info-value" id="view-summary-compression">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Reading Time:</span>
+                                <span class="info-value" id="view-summary-readtime">-</span>
+                            </div>
+                        </div>
+                        <div class="content-viewer">
+                            <pre id="view-summary-content" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto; padding: 15px; background: #e3f2fd; border-radius: 5px;">Loading...</pre>
+                        </div>
+                    </div>
+                    <div class="comparison-section">
+                        <h4>Original Document</h4>
+                        <div class="document-info">
+                            <div class="info-row">
+                                <span class="info-label">File Name:</span>
+                                <span class="info-value" id="view-summary-doc-filename">-</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">Word Count:</span>
+                                <span class="info-value" id="view-summary-doc-wordcount">-</span>
+                            </div>
+                        </div>
+                        <div class="content-viewer">
+                            <pre id="view-summary-doc-content" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto; padding: 15px; background: #f5f5f5; border-radius: 5px;">Loading...</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" id="copy-summary-content">
+                    <i class="fas fa-copy"></i> Copy Summary
+                </button>
+                <button class="btn btn-primary" id="close-view-summary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Player Modal -->
+    <div class="modal" id="audio-player-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-headphones"></i> Audio Player</h3>
+                <button class="close-modal" id="close-audio-player">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="audio-player">
+                    <div class="audio-player-info">
+                        <h4 id="audio-player-title">Podcast Title</h4>
+                        <p id="audio-player-meta">Document: Unknown</p>
+                    </div>
+                    
+                    <div class="audio-player-controls">
+                        <audio id="audio-element" preload="metadata"></audio>
+                        
+                        <!-- Play/Pause Button -->
+                        <button class="audio-btn audio-play-pause" id="audio-play-pause">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        
+                        <!-- Progress Bar -->
+                        <div class="audio-progress-container">
+                            <div class="audio-progress-bar" id="audio-progress-bar">
+                                <div class="audio-progress-fill" id="audio-progress-fill"></div>
+                                <div class="audio-progress-handle" id="audio-progress-handle"></div>
+                            </div>
+                            <div class="audio-time">
+                                <span id="audio-current-time">0:00</span>
+                                <span id="audio-total-time">0:00</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Volume Control -->
+                        <div class="audio-volume-control">
+                            <button class="audio-btn audio-volume-btn" id="audio-volume-btn">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                            <input type="range" class="audio-volume-slider" id="audio-volume-slider" min="0" max="100" value="100">
+                        </div>
+                        
+                        <!-- Speed Control -->
+                        <div class="audio-speed-control">
+                            <button class="audio-btn audio-speed-btn" id="audio-speed-btn">1x</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Additional Controls -->
+                    <div class="audio-player-actions">
+                        <button class="btn btn-outline btn-sm" id="audio-download-btn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button class="btn btn-outline btn-sm" id="audio-share-btn">
+                            <i class="fas fa-share"></i> Share
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils/api.js"></script>
+    <script src="js/utils/helpers.js"></script>
+    <script src="js/components/Component.js"></script>
+    <script src="js/components/Modal.js"></script>
+    <script src="js/components/DocumentCard.js"></script>
+    <script src="js/components/SummaryCard.js"></script>
+    <script src="js/components/PodcastCard.js"></script>
+    <script src="js/browserTTS.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/document.js"></script>
+    <script src="js/summaries.js"></script>
+    <script src="js/podcasts.js"></script>
+</body>
+</html>

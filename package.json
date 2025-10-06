@@ -1,0 +1,52 @@
+{
+  "name": "podcast-generator",
+  "version": "1.0.0",
+  "description": "A web application for generating podcasts from documents",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "setup:google": "node setup-google-cloud.js",
+    "check:google": "node check-google-config.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate:atlas": "node migrate-to-atlas.js",
+    "migrate:gcs": "node migrate-files-to-gcs.js",
+    "test:atlas": "node test-atlas-connection.js",
+    "test:gcs": "node test-cloud-storage.js",
+    "docker:build": "docker build -t podcast-generator .",
+    "docker:run": "docker run -p 8080:8080 --env-file .env podcast-generator",
+    "deploy:run": "gcloud run deploy podcast-generator --source . --region us-central1 --allow-unauthenticated",
+    "deploy:appengine": "gcloud app deploy app.yaml --quiet",
+    "deploy:build": "gcloud builds submit --config cloudbuild.yaml"
+  },
+  "keywords": [
+    "podcast",
+    "generator",
+    "text-to-speech",
+    "documents"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/documentai": "^9.4.0",
+    "@google-cloud/storage": "^7.17.1",
+    "@google-cloud/text-to-speech": "^6.3.0",
+    "@google-cloud/vertexai": "^1.10.0",
+    "axios": "^1.5.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-session": "^1.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.6.0",
+    "mongoose": "^7.5.0",
+    "multer": "^1.4.5-lts.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
