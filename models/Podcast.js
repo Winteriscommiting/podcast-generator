@@ -25,6 +25,9 @@ const podcastSchema = new mongoose.Schema({
   audioUrl: {
     type: String,
   },
+  audioText: {
+    type: String, // Store text for browser TTS synthesis
+  },
   audioSignedUrl: {
     type: String, // Temporary signed URL for accessing audio (GCS)
   },
@@ -33,7 +36,7 @@ const podcastSchema = new mongoose.Schema({
   },
   storageType: {
     type: String,
-    enum: ['local', 'gcs'],
+    enum: ['local', 'gcs', 'browser'],
     default: 'local',
   },
   audioSize: {

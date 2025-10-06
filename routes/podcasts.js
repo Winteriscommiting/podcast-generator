@@ -74,18 +74,38 @@ router.post('/', protect, async (req, res) => {
     // Determine text to convert
     const textToConvert = sourceType === 'summary' ? summary.summaryText : document.extractedText;
     
-    // Generate audio with user ID for cloud storage organization
-    const audioResult = await generateAudio(textToConvert, voiceProvider, finalVoiceSettings, req.user.id);
-    
-    // Update podcast with audio details
-    podcast.audioUrl = audioResult.url;
-    podcast.audioSize = audioResult.size;
-    podcast.duration = audioResult.duration;
-    podcast.audioSignedUrl = audioResult.signedUrl;
-    podcast.gcsPath = audioResult.gcsPath;
-    podcast.storageType = audioResult.storageType;
-    podcast.processingStatus = 'completed';
-    await podcast.save();
+    // For browser TTS, skip server-side audio generation
+    // The browser will generate audio on the client side
+    if (voiceProvider === 'browser') {
+      // Store the text for client-side synthesis
+      podcast.audioUrl = 'browser-tts'; // Special marker
+      podcast.audioText = textToConvert; // Store text for browser synthesis
+      podcast.audioSize = textToConvert.length; // Text size in bytes
+      
+      // Estimate duration based on text length (approximate)
+      const wordCount = textToConvert.split(/\s+/).filter(word => word.length > 0).length;
+      const wordsPerSecond = 2.5 * (finalVoiceSettings.speed || 1.0);
+      podcast.duration = Math.ceil(wordCount / wordsPerSecond);
+      
+      podcast.audioSignedUrl = null;
+      podcast.gcsPath = null;
+      podcast.storageType = 'browser';
+      podcast.processingStatus = 'completed';
+      await podcast.save();
+    } else {
+      // Generate audio with user ID for cloud storage organization (for Google TTS)
+      const audioResult = await generateAudio(textToConvert, voiceProvider, finalVoiceSettings, req.user.id);
+      
+      // Update podcast with audio details
+      podcast.audioUrl = audioResult.url;
+      podcast.audioSize = audioResult.size;
+      podcast.duration = audioResult.duration;
+      podcast.audioSignedUrl = audioResult.signedUrl;
+      podcast.gcsPath = audioResult.gcsPath;
+      podcast.storageType = audioResult.storageType;
+      podcast.processingStatus = 'completed';
+      await podcast.save();
+    }
     
     res.status(201).json({
       success: true,

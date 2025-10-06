@@ -1,0 +1,8 @@
+MONGODB_URI=mongodb+srv://podcast-user:SecurePass123@podcast-app-cluster.lcsqxxf.mongodb.net/podcast-generator
+NODE_ENV=production
+USE_CLOUD_STORAGE=false
+USE_GOOGLE_TTS=false
+GOOGLE_CLIENT_ID=36957544811-vih1f3mc8tn02ebotv5kq6m2a2d63ju6.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+JWT_SECRET=OU1Xm6HkI7ARlsr9MegTanfd8oJxWC3Z
+SESSION_SECRET=ctVEMHxwumvfaGN6qo98I2zZyjhpBKL4
