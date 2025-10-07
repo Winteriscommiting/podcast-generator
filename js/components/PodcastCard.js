@@ -85,18 +85,26 @@ class PodcastCard extends Component {
     
     renderActions() {
         const { podcast } = this;
-        // Check if podcast has valid audio URL or GCS path
-        const hasAudio = (podcast.audioUrl && podcast.audioUrl !== '' && podcast.audioUrl !== 'null' && podcast.audioUrl !== 'undefined' && !podcast.audioUrl.includes('example.com')) || podcast.gcsPath;
+        // Check if podcast has valid audio (file or browser TTS)
+        const isBrowserTTS = podcast.storageType === 'browser' || podcast.audioUrl === 'browser-tts';
+        const hasAudioFile = (podcast.audioUrl && podcast.audioUrl !== '' && podcast.audioUrl !== 'null' && podcast.audioUrl !== 'undefined' && podcast.audioUrl !== 'browser-tts' && !podcast.audioUrl.includes('example.com')) || podcast.gcsPath;
+        const hasAudio = isBrowserTTS || hasAudioFile;
         
         return `
             <div class="podcast-actions">
                 ${podcast.processingStatus === 'completed' && hasAudio ? `
                     <button class="btn btn-primary btn-sm play-btn" data-id="${podcast._id}" data-url="${podcast.audioUrl || ''}">
-                        <i class="fas fa-play"></i> Play
+                        <i class="fas fa-play"></i> ${isBrowserTTS ? 'Play (Browser TTS)' : 'Play'}
                     </button>
-                    <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${podcast.audioUrl || ''}" data-title="${podcast.title}">
-                        <i class="fas fa-download"></i> Download
-                    </button>
+                    ${!isBrowserTTS ? `
+                        <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${podcast.audioUrl || ''}" data-title="${podcast.title}">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    ` : `
+                        <span class="text-muted" style="font-size: 0.75rem;">
+                            <i class="fas fa-info-circle"></i> Browser TTS (no download)
+                        </span>
+                    `}
                     <button class="btn btn-outline btn-sm share-btn" data-id="${podcast._id}">
                         <i class="fas fa-share"></i> Share
                     </button>

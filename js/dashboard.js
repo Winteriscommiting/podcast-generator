@@ -683,6 +683,10 @@ async function handleCreatePodcastFromSummary(summaryId) {
 
 async function handlePlayPodcast(podcastId, audioUrl) {
     try {
+        console.log('🎵 handlePlayPodcast called');
+        console.log('   Podcast ID:', podcastId);
+        console.log('   Audio URL:', audioUrl);
+        
         // Fetch podcast details
         const response = await apiRequest(`/api/podcasts/${podcastId}`);
         
@@ -692,18 +696,28 @@ async function handlePlayPodcast(podcastId, audioUrl) {
         }
         
         const podcast = response.podcast;
+        console.log('📦 Podcast data:', {
+            id: podcast._id,
+            title: podcast.title,
+            audioUrl: podcast.audioUrl,
+            storageType: podcast.storageType,
+            hasAudioText: !!podcast.audioText,
+            audioTextLength: podcast.audioText?.length || 0
+        });
         
         // Check if this is a browser TTS podcast
         if (podcast.storageType === 'browser' || podcast.audioUrl === 'browser-tts') {
+            console.log('✅ Detected Browser TTS podcast, using browser synthesis');
             // Use browser TTS to play
             playWithBrowserTTS(podcast);
             return;
         }
         
+        console.log('✅ Regular audio podcast, using audio player');
         // Open audio player modal for regular audio
         openAudioPlayer(podcast, audioUrl);
     } catch (error) {
-        console.error('Error playing podcast:', error);
+        console.error('❌ Error playing podcast:', error);
         showToast('Failed to play podcast', 'error');
     }
 }
@@ -1019,29 +1033,17 @@ function formatTime(seconds) {
 }
 
 async function handleDownloadPodcast(podcastId, audioUrl, title) {
-    // Check if this is a browser TTS podcast
-    try {
-        const response = await apiRequest(`/api/podcasts/${podcastId}`);
-        
-        if (response.success && (response.podcast.storageType === 'browser' || response.podcast.audioUrl === 'browser-tts')) {
-            showToast('Browser TTS podcasts cannot be downloaded. They are synthesized in real-time in your browser.', 'info');
-            return;
-        }
-    } catch (error) {
-        console.error('Error checking podcast type:', error);
+    // Quick check - if audioUrl is 'browser-tts', don't download
+    if (audioUrl === 'browser-tts') {
+        showToast('Browser TTS podcasts cannot be downloaded. They are synthesized in real-time.', 'info');
+        return;
     }
     
-    // Use the backend download route instead of direct audioUrl
+    // Use the backend download route
     const token = getAuthToken();
     const downloadUrl = `${API_BASE_URL}/api/podcasts/${podcastId}/download`;
     
-    // Create a temporary anchor element for download
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = `${title}.mp3`;
-    
-    // Add authorization header by opening in a new window
-    // Note: For authenticated downloads, we'll use fetch and blob
+    // Fetch and download
     fetch(downloadUrl, {
         headers: {
             'Authorization': `Bearer ${token}`
@@ -1055,7 +1057,9 @@ async function handleDownloadPodcast(podcastId, audioUrl, title) {
     })
     .then(blob => {
         const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
         a.href = url;
+        a.download = `${title}.mp3`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
