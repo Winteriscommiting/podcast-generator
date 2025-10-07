@@ -28,6 +28,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-polly": "^3.901.0",
     "@google-cloud/documentai": "^9.4.0",
     "@google-cloud/storage": "^7.17.1",
     "@google-cloud/text-to-speech": "^6.3.0",
@@ -40,6 +41,7 @@
     "express-session": "^1.18.2",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.6.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.46.0",
     "mongoose": "^7.5.0",
     "multer": "^1.4.5-lts.1",
     "passport": "^0.7.0",

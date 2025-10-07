@@ -171,6 +171,7 @@ async function loadUserInfo() {
         const response = await apiRequest('/api/auth/verify');
         
         if (response.success) {
+            // Update sidebar user info
             const userNameElement = document.getElementById('user-name');
             const userEmailElement = document.getElementById('user-email');
             
@@ -181,9 +182,33 @@ async function loadUserInfo() {
             if (userEmailElement) {
                 userEmailElement.textContent = response.user.email;
             }
+            
+            // Update settings page user info
+            const userNameSetting = document.getElementById('user-name-setting');
+            const userEmailSetting = document.getElementById('user-email-setting');
+            
+            if (userNameSetting) {
+                userNameSetting.value = response.user.name || 'Not available';
+            }
+            
+            if (userEmailSetting) {
+                userEmailSetting.value = response.user.email || 'Not available';
+            }
         }
     } catch (error) {
         console.error('Error loading user info:', error);
+        
+        // Set fallback values in settings if error occurs
+        const userNameSetting = document.getElementById('user-name-setting');
+        const userEmailSetting = document.getElementById('user-email-setting');
+        
+        if (userNameSetting) {
+            userNameSetting.value = 'Unable to load';
+        }
+        
+        if (userEmailSetting) {
+            userEmailSetting.value = 'Unable to load';
+        }
     }
 }
 

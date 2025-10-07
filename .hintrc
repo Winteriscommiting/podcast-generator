@@ -17,6 +17,13 @@
         "button-name": "off"
       }
     ],
-    "disown-opener": "off"
+    "disown-opener": "off",
+    "button-type": "off",
+    "axe/forms": [
+      "default",
+      {
+        "label": "off"
+      }
+    ]
   }
 }

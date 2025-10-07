@@ -1,6 +1,7 @@
 const express = require('express');
 const { protect } = require('../middleware/auth');
 const { getAvailableVoices } = require('../services/tts');
+const azureSpeech = require('../services/azureSpeech');
 
 const router = express.Router();
 
@@ -16,7 +17,36 @@ router.get('/available', protect, async (req, res) => {
     
     let voices = [];
     
-    if (provider === 'google' || process.env.USE_GOOGLE_TTS === 'true') {
+    if (provider === 'azure') {
+      // Get Azure Speech voices
+      if (azureSpeech.isAzureSpeechAvailable()) {
+        try {
+          const azureVoices = await azureSpeech.getAzureVoices(languageCode);
+          
+          if (azureVoices && azureVoices.length > 0) {
+            voices = azureVoices.map(voice => ({
+              id: voice.id,
+              name: voice.name,
+              language: voice.languageCode,
+              gender: voice.gender,
+              provider: 'azure',
+              quality: voice.isNeural ? 'high' : 'standard',
+              isNeural: voice.isNeural
+            }));
+            console.log(`   ✅ Loaded ${voices.length} Azure voices`);
+          } else {
+            voices = getDefaultAzureVoices();
+            console.log(`   ⚠️  Using ${voices.length} fallback Azure voices`);
+          }
+        } catch (error) {
+          console.error('   ❌ Error fetching Azure voices:', error.message);
+          voices = getDefaultAzureVoices();
+        }
+      } else {
+        console.log('   ℹ️  Azure Speech not configured, using fallback voices');
+        voices = getDefaultAzureVoices();
+      }
+    } else if (provider === 'google' || process.env.USE_GOOGLE_TTS === 'true') {
       // Get real Google TTS voices from API
       try {
         const googleVoices = await getAvailableVoices(languageCode);
@@ -78,6 +108,25 @@ function formatVoiceName(voiceName) {
     .replace(/Studio-/, 'Studio ') // Format Studio voices
     .replace(/Wavenet-/, 'Wavenet ') // Format Wavenet voices
     .replace(/-/g, ' '); // Replace remaining hyphens with spaces
+}
+
+/**
+ * Default AWS Polly voices (fallback)
+ */
+/**
+ * Default Azure Speech voices (fallback)
+ */
+function getDefaultAzureVoices() {
+  const recommended = azureSpeech.getRecommendedVoices();
+  return recommended.map(voice => ({
+    id: voice.id,
+    name: voice.name,
+    language: voice.languageCode,
+    gender: voice.gender,
+    provider: 'azure',
+    quality: voice.isNeural ? 'high' : 'standard',
+    isNeural: voice.isNeural
+  }));
 }
 
 /**

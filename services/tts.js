@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const textToSpeech = require('@google-cloud/text-to-speech');
 const cloudStorage = require('./cloudStorage');
+const azureSpeech = require('./azureSpeech');
 
 // Initialize Google Cloud TTS client
 const ttsClient = new textToSpeech.TextToSpeechClient({
@@ -47,7 +48,12 @@ const generateAudio = async (text, provider, settings, userId = 'guest') => {
     console.log(`   Word count: ${wordCount}`);
     console.log(`   Estimated duration: ${estimatedDuration}s`);
     
-    // Use Google Cloud TTS if provider is 'google' or if explicitly enabled
+    // Priority 1: Azure Speech (if available and provider is 'azure')
+    if (provider === 'azure' && azureSpeech.isAzureSpeechAvailable()) {
+      return await generateAzureSpeechTTS(text, filename, settings, wordCount, estimatedDuration, userId);
+    }
+    
+    // Priority 2: Google Cloud TTS if provider is 'google' or if explicitly enabled
     if (provider === 'google' || USE_GOOGLE_TTS) {
       return await generateGoogleTTS(text, filename, settings, wordCount, estimatedDuration, userId);
     } else {
@@ -147,6 +153,39 @@ async function generateGoogleTTS(text, filename, settings, wordCount, estimatedD
     return await generateMockAudio(text, filename, settings, wordCount, estimatedDuration, userId);
   }
 }
+
+/**
+ * Generate audio using AWS Polly
+ */
+/**
+ * Generate audio using Azure Speech Services
+ */
+async function generateAzureSpeechTTS(text, filename, settings, wordCount, estimatedDuration, userId) {
+  try {
+    console.log('🔊 Using Azure Speech Text-to-Speech...');
+    
+    // Call Azure Speech service
+    const result = await azureSpeech.generateAzureAudio(text, settings);
+    
+    return {
+      url: result.url,
+      signedUrl: result.url,
+      gcsPath: null,
+      storageType: result.storageType || 'local',
+      size: result.fileSize,
+      duration: result.duration
+    };
+  } catch (error) {
+    console.error('❌ Azure Speech Error:', error.message);
+    // Fallback to mock audio if Azure Speech fails
+    console.log('   ⚠️  Falling back to mock audio generation...');
+    return await generateMockAudio(text, filename, settings, wordCount, estimatedDuration, userId);
+  }
+}
+
+/**
+ * Generate audio using Google Cloud Text-to-Speech API
+ */
 async function generateGoogleTTS(text, filename, settings, wordCount, estimatedDuration) {
   try {
     console.log('🔊 Using Google Cloud Text-to-Speech...');

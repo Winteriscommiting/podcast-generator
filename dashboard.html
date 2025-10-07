@@ -318,16 +318,19 @@
                     
                     <div class="settings-container">
                         <div class="settings-section">
-                            <h3>Account Settings</h3>
+                            <h3>Account Information</h3>
                             <div class="setting-item">
                                 <label for="user-name-setting">Name</label>
-                                <input type="text" id="user-name-setting" value="John Doe">
+                                <input type="text" id="user-name-setting" value="Loading..." readonly>
                             </div>
                             <div class="setting-item">
                                 <label for="user-email-setting">Email</label>
-                                <input type="email" id="user-email-setting" value="john.doe@example.com">
+                                <input type="email" id="user-email-setting" value="Loading..." readonly>
                             </div>
-                            <button class="btn btn-primary">Save Changes</button>
+                            <p class="settings-note">
+                                <i class="fas fa-info-circle"></i>
+                                Account information is managed through your Google account.
+                            </p>
                         </div>
                         
                         <div class="settings-section">
@@ -358,13 +361,16 @@
                         </div>
                         
                         <div class="settings-section">
-                            <h3>Subscription</h3>
+                            <h3>About</h3>
                             <div class="subscription-info">
                                 <div class="subscription-plan">
-                                    <h4>Current Plan: <span class="plan-name">Pro</span></h4>
-                                    <p>$9/month - Renews on July 15, 2023</p>
+                                    <h4>Podcast Generator</h4>
+                                    <p>✨ Completely FREE to use!</p>
+                                    <p>Generate unlimited podcasts with Azure Speech Services</p>
+                                    <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                                        <i class="fas fa-check-circle"></i> 5M characters per month free forever
+                                    </p>
                                 </div>
-                                <button class="btn btn-outline">Manage Subscription</button>
                             </div>
                         </div>
                     </div>
@@ -472,8 +478,8 @@
                     <label for="voice-provider">Voice Provider</label>
                     <select id="voice-provider">
                         <option value="browser">Browser (Free)</option>
+                        <option value="azure">Azure Speech (Best - 5M chars free forever!)</option>
                         <option value="google">Google TTS</option>
-                        <option value="amazon">Amazon Polly</option>
                     </select>
                 </div>
                 
@@ -688,6 +694,9 @@
                     
                     <!-- Additional Controls -->
                     <div class="audio-player-actions">
+                        <button class="btn btn-outline btn-sm" id="audio-download-btn">
+                            <i class="fas fa-download"></i> Download
+                        </button>
                         <button class="btn btn-outline btn-sm" id="audio-share-btn">
                             <i class="fas fa-share"></i> Share
                         </button>
