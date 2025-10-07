@@ -96,15 +96,6 @@ class PodcastCard extends Component {
                     <button class="btn btn-primary btn-sm play-btn" data-id="${podcast._id}" data-url="${podcast.audioUrl || ''}">
                         <i class="fas fa-play"></i> ${isBrowserTTS ? 'Play (Browser TTS)' : 'Play'}
                     </button>
-                    ${!isBrowserTTS ? `
-                        <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${podcast.audioUrl || ''}" data-title="${podcast.title}">
-                            <i class="fas fa-download"></i> Download
-                        </button>
-                    ` : `
-                        <span class="text-muted" style="font-size: 0.75rem;">
-                            <i class="fas fa-info-circle"></i> Browser TTS (no download)
-                        </span>
-                    `}
                     <button class="btn btn-outline btn-sm share-btn" data-id="${podcast._id}">
                         <i class="fas fa-share"></i> Share
                     </button>

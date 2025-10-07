@@ -986,13 +986,6 @@ function initAudioPlayer() {
         speedBtn.textContent = `${speed}x`;
     });
     
-    // Download button
-    downloadBtn.addEventListener('click', () => {
-        if (currentPodcast) {
-            handleDownloadPodcast(currentPodcast._id, currentPodcast.audioUrl, currentPodcast.title);
-        }
-    });
-    
     // Share button
     shareBtn.addEventListener('click', () => {
         if (currentPodcast) {
