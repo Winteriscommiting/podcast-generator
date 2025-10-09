@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const extractText = require('../services/textExtraction');
 const cloudStorage = require('../services/cloudStorage');
+const gridfs = require('../services/gridfs');
 
 const router = express.Router();
 
@@ -76,43 +77,35 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
     console.log('✅ Upload validation passed');
 
-    // Upload file to Google Cloud Storage (if enabled)
-    let filePath, fileUrl, gcsPath, storageType;
+    // Upload file to GridFS (MongoDB) - Primary storage
+    let filePath, fileUrl, gcsPath, storageType, gridfsId;
     
-    if (process.env.USE_CLOUD_STORAGE === 'true') {
-      try {
-        console.log('☁️  Uploading document to Google Cloud Storage...');
-        gcsPath = cloudStorage.generateFilePath(req.user.id, originalName, 'document');
-        fileUrl = await cloudStorage.uploadFile(
-          file.buffer,
-          gcsPath,
-          'documents',
-          { 
-            contentType: file.mimetype,
-            metadata: {
-              originalName: originalName,
-              userId: req.user.id,
-              uploadDate: new Date().toISOString()
-            }
-          }
-        );
-        filePath = gcsPath;
-        storageType = 'gcs';
-        console.log(`✅ Document uploaded to GCS: ${gcsPath}`);
-      } catch (error) {
-        console.error('❌ GCS upload failed, using local storage:', error.message);
-        filePath = req.file.path;
-        fileUrl = `/uploads/${req.file.filename}`;
-        gcsPath = null;
-        storageType = 'local';
-      }
-    } else {
-      // Local storage - save file to uploads directory
-      console.log('ℹ️  Using local storage for document');
-      filePath = req.file.path;
-      fileUrl = `/uploads/${req.file.filename}`;
-      gcsPath = null;
-      storageType = 'local';
+    try {
+      console.log('☁️  Uploading document to GridFS (MongoDB)...');
+      
+      // Upload to GridFS
+      const uploadResult = await gridfs.uploadToGridFS(
+        file.buffer,
+        originalName,
+        {
+          contentType: file.mimetype,
+          userId: req.user.id,
+          fileType: fileType,
+          originalName: originalName,
+          uploadDate: new Date()
+        }
+      );
+      
+      gridfsId = uploadResult.fileId.toString();
+      filePath = gridfsId; // Store GridFS file ID
+      fileUrl = `/api/documents/file/${gridfsId}`; // URL to download file
+      storageType = 'gridfs';
+      
+      console.log(`✅ Document uploaded to GridFS: ${gridfsId}`);
+      
+    } catch (error) {
+      console.error('❌ GridFS upload failed:', error.message);
+      throw new Error('Failed to upload document to database storage');
     }
 
     // Create document with all required fields
@@ -215,6 +208,17 @@ router.delete('/:id', protect, async (req, res) => {
       return res.status(401).json({ success: false, message: 'Not authorized to delete this document' });
     }
     
+    // Delete file from GridFS if it exists
+    if (document.storageType === 'gridfs' && document.filePath) {
+      try {
+        await gridfs.deleteFromGridFS(document.filePath);
+        console.log(`✅ Deleted document file from GridFS: ${document.filePath}`);
+      } catch (error) {
+        console.error('❌ Error deleting file from GridFS:', error.message);
+        // Continue with document deletion even if file deletion fails
+      }
+    }
+    
     // Delete associated summaries and podcasts (cascade delete)
     const Summary = require('../models/Summary');
     const Podcast = require('../models/Podcast');
@@ -230,6 +234,49 @@ router.delete('/:id', protect, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @desc    Download file from GridFS
+// @route   GET /api/documents/file/:fileId
+// @access  Public (will check ownership inside)
+router.get('/file/:fileId', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    
+    console.log(`📥 File download requested: ${fileId}`);
+    
+    // Get file metadata
+    const fileMetadata = await gridfs.getFileMetadata(fileId);
+    
+    if (!fileMetadata) {
+      return res.status(404).json({ success: false, message: 'File not found' });
+    }
+    
+    // Set response headers
+    res.set({
+      'Content-Type': fileMetadata.contentType || 'application/octet-stream',
+      'Content-Disposition': `inline; filename="${fileMetadata.filename}"`,
+      'Content-Length': fileMetadata.size
+    });
+    
+    // Stream file from GridFS
+    const downloadStream = gridfs.getDownloadStream(fileId);
+    
+    downloadStream.on('error', (error) => {
+      console.error('❌ Error streaming file:', error);
+      if (!res.headersSent) {
+        res.status(404).json({ success: false, message: 'File not found' });
+      }
+    });
+    
+    downloadStream.pipe(res);
+    
+  } catch (error) {
+    console.error('❌ Error downloading file:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, message: 'Error downloading file' });
+    }
   }
 });
 

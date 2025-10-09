@@ -67,6 +67,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize modals
     initModals();
     
+    // User menu toggle
+    const userMenuToggle = document.querySelector('.user-menu-toggle');
+    const userMenu = document.getElementById('user-menu');
+    
+    console.log('🔍 User menu elements:', {
+        toggle: userMenuToggle,
+        menu: userMenu
+    });
+    
+    if (userMenuToggle && userMenu) {
+        userMenuToggle.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent event bubbling
+            console.log('👆 User menu toggle clicked');
+            userMenu.classList.toggle('show');
+            console.log('📋 Menu classes:', userMenu.className);
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!userMenuToggle.contains(e.target) && !userMenu.contains(e.target)) {
+                userMenu.classList.remove('show');
+            }
+        });
+    }
+    
+    // Initialize profile and notifications
+    console.log('🔧 Initializing profile and notifications...');
+    initProfileModal();
+    initNotificationSystem();
+    console.log('✅ Profile and notifications initialized');
+    
     // Logout button
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -1673,3 +1704,381 @@ async function initBulkGenerateModal() {
         }
     });
 }
+
+// ==================== PROFILE MODAL ====================
+
+// Initialize profile modal
+function initProfileModal() {
+    console.log('🔧 initProfileModal called');
+    const profileMenuBtn = document.getElementById('profile-menu-btn');
+    const profileModal = document.getElementById('profile-modal');
+    const closeProfileBtn = document.getElementById('close-profile-modal');
+    const cancelProfileBtn = document.getElementById('cancel-profile-btn');
+    const saveProfileBtn = document.getElementById('save-profile-btn');
+    
+    console.log('🔍 Profile elements:', {
+        menuBtn: profileMenuBtn,
+        modal: profileModal,
+        closeBtn: closeProfileBtn
+    });
+    
+    if (profileMenuBtn) {
+        profileMenuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('👤 Profile menu clicked');
+            // Close user menu
+            const userMenu = document.getElementById('user-menu');
+            if (userMenu) {
+                userMenu.classList.remove('show');
+            }
+            openProfileModal();
+        });
+    }
+    
+    if (closeProfileBtn) {
+        closeProfileBtn.addEventListener('click', () => {
+            profileModal.classList.remove('show');
+        });
+    }
+    
+    if (cancelProfileBtn) {
+        cancelProfileBtn.addEventListener('click', () => {
+            profileModal.classList.remove('show');
+        });
+    }
+    
+    if (saveProfileBtn) {
+        saveProfileBtn.addEventListener('click', saveProfile);
+    }
+    
+    // Dark mode preference
+    const darkModeCheckbox = document.getElementById('pref-dark-mode');
+    if (darkModeCheckbox) {
+        // Check current theme
+        const currentTheme = localStorage.getItem('theme') || 'light';
+        darkModeCheckbox.checked = currentTheme === 'dark';
+        
+        darkModeCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('dark-theme');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.body.classList.remove('dark-theme');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    }
+}
+
+// Open profile modal
+async function openProfileModal() {
+    console.log('🚀 openProfileModal called');
+    const modal = document.getElementById('profile-modal');
+    
+    if (!modal) {
+        console.error('❌ Profile modal not found!');
+        return;
+    }
+    
+    console.log('📋 Profile modal found:', modal);
+    
+    // Load user info
+    try {
+        const response = await apiRequest('/api/auth/verify');
+        
+        if (response.success) {
+            const user = response.user;
+            
+            // Update profile display
+            document.getElementById('profile-display-name').textContent = user.name;
+            document.getElementById('profile-display-email').textContent = user.email;
+            
+            // Update input fields
+            document.getElementById('profile-name-input').value = user.name || '';
+            document.getElementById('profile-email-input').value = user.email || '';
+            
+            // Load preferences from localStorage
+            const prefs = JSON.parse(localStorage.getItem('userPreferences') || '{}');
+            document.getElementById('pref-email-notifications').checked = prefs.emailNotifications !== false;
+            document.getElementById('pref-auto-save').checked = prefs.autoSave !== false;
+            
+            // Load statistics
+            const docsResponse = await apiRequest('/api/documents');
+            const summariesResponse = await apiRequest('/api/summaries');
+            const podcastsResponse = await apiRequest('/api/podcasts');
+            
+            if (docsResponse.success) {
+                document.getElementById('profile-stat-documents').textContent = docsResponse.documents.length;
+            }
+            
+            if (summariesResponse.success) {
+                document.getElementById('profile-stat-summaries').textContent = summariesResponse.summaries.length;
+            }
+            
+            if (podcastsResponse.success) {
+                document.getElementById('profile-stat-podcasts').textContent = podcastsResponse.podcasts.length;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading profile:', error);
+        showToast('Failed to load profile', 'error');
+    }
+    
+    // Show modal
+    modal.classList.add('show');
+}
+
+// Save profile
+async function saveProfile() {
+    const nameInput = document.getElementById('profile-name-input');
+    const emailNotifications = document.getElementById('pref-email-notifications').checked;
+    const autoSave = document.getElementById('pref-auto-save').checked;
+    
+    // Save preferences to localStorage
+    const prefs = {
+        emailNotifications,
+        autoSave
+    };
+    
+    localStorage.setItem('userPreferences', JSON.stringify(prefs));
+    
+    // Update display name if changed
+    const newName = nameInput.value.trim();
+    if (newName) {
+        // Update sidebar
+        const userNameElement = document.getElementById('user-name');
+        if (userNameElement) {
+            userNameElement.textContent = newName;
+        }
+        
+        // Update settings page
+        const userNameSetting = document.getElementById('user-name-setting');
+        if (userNameSetting) {
+            userNameSetting.value = newName;
+        }
+    }
+    
+    showToast('Profile updated successfully', 'success');
+    
+    // Close modal
+    document.getElementById('profile-modal').classList.remove('show');
+}
+
+// ==================== NOTIFICATION SYSTEM ====================
+
+// Notification storage
+let notifications = [];
+
+// Initialize notification system
+function initNotificationSystem() {
+    console.log('🔧 initNotificationSystem called');
+    const notificationsMenuBtn = document.getElementById('notifications-menu-btn');
+    const notificationsModal = document.getElementById('notifications-modal');
+    const closeNotificationsBtn = document.getElementById('close-notifications-modal');
+    const markAllReadBtn = document.getElementById('mark-all-read-btn');
+    
+    console.log('🔍 Notification elements:', {
+        menuBtn: notificationsMenuBtn,
+        modal: notificationsModal,
+        closeBtn: closeNotificationsBtn
+    });
+    
+    // Load notifications from localStorage
+    loadNotificationsFromStorage();
+    
+    if (notificationsMenuBtn) {
+        notificationsMenuBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log('🔔 Notifications menu clicked');
+            // Close user menu
+            const userMenu = document.getElementById('user-menu');
+            if (userMenu) {
+                userMenu.classList.remove('show');
+            }
+            openNotificationsModal();
+        });
+    }
+    
+    if (closeNotificationsBtn) {
+        closeNotificationsBtn.addEventListener('click', () => {
+            notificationsModal.classList.remove('show');
+        });
+    }
+    
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', markAllNotificationsAsRead);
+    }
+    
+    // Update badge count
+    updateNotificationBadge();
+}
+
+// Load notifications from localStorage
+function loadNotificationsFromStorage() {
+    const stored = localStorage.getItem('notifications');
+    if (stored) {
+        try {
+            notifications = JSON.parse(stored);
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            notifications = [];
+        }
+    }
+}
+
+// Save notifications to localStorage
+function saveNotificationsToStorage() {
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+}
+
+// Add notification
+function addNotification(type, title, message) {
+    const notification = {
+        id: Date.now(),
+        type: type, // 'success', 'error', 'info', 'warning'
+        title: title,
+        message: message,
+        timestamp: new Date().toISOString(),
+        read: false
+    };
+    
+    notifications.unshift(notification);
+    
+    // Keep only last 50 notifications
+    if (notifications.length > 50) {
+        notifications = notifications.slice(0, 50);
+    }
+    
+    saveNotificationsToStorage();
+    updateNotificationBadge();
+}
+
+// Open notifications modal
+function openNotificationsModal() {
+    const modal = document.getElementById('notifications-modal');
+    const notificationsList = document.getElementById('notifications-list');
+    
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = `
+            <div class="empty-state" style="padding: 40px;">
+                <i class="fas fa-bell-slash"></i>
+                <h3>No notifications</h3>
+                <p>You're all caught up!</p>
+            </div>
+        `;
+    } else {
+        notificationsList.innerHTML = '';
+        
+        notifications.forEach(notif => {
+            const notifItem = document.createElement('div');
+            notifItem.className = `notification-item ${notif.read ? 'read' : 'unread'} notification-${notif.type}`;
+            
+            const iconMap = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                info: 'fa-info-circle',
+                warning: 'fa-exclamation-triangle'
+            };
+            
+            const icon = iconMap[notif.type] || 'fa-bell';
+            
+            notifItem.innerHTML = `
+                <div class="notification-icon">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="notification-content">
+                    <h5>${notif.title}</h5>
+                    <p>${notif.message}</p>
+                    <small>${formatNotificationTime(notif.timestamp)}</small>
+                </div>
+                <div class="notification-actions">
+                    ${!notif.read ? `<button class="btn-icon" onclick="markNotificationAsRead('${notif.id}')" title="Mark as read">
+                        <i class="fas fa-check"></i>
+                    </button>` : ''}
+                    <button class="btn-icon" onclick="deleteNotification('${notif.id}')" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            notificationsList.appendChild(notifItem);
+        });
+    }
+    
+    // Show modal
+    modal.classList.add('show');
+}
+
+// Mark notification as read
+function markNotificationAsRead(notifId) {
+    const notification = notifications.find(n => n.id === parseInt(notifId));
+    if (notification) {
+        notification.read = true;
+        saveNotificationsToStorage();
+        updateNotificationBadge();
+        openNotificationsModal(); // Refresh the list
+    }
+}
+
+// Mark all notifications as read
+function markAllNotificationsAsRead() {
+    notifications.forEach(n => n.read = true);
+    saveNotificationsToStorage();
+    updateNotificationBadge();
+    openNotificationsModal(); // Refresh the list
+    showToast('All notifications marked as read', 'success');
+}
+
+// Delete notification
+function deleteNotification(notifId) {
+    notifications = notifications.filter(n => n.id !== parseInt(notifId));
+    saveNotificationsToStorage();
+    updateNotificationBadge();
+    openNotificationsModal(); // Refresh the list
+}
+
+// Update notification badge
+function updateNotificationBadge() {
+    const badge = document.querySelector('#notifications .notification-badge');
+    const unreadCount = notifications.filter(n => !n.read).length;
+    
+    if (badge) {
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// Format notification timestamp
+function formatNotificationTime(timestamp) {
+    const now = new Date();
+    const notifTime = new Date(timestamp);
+    const diffMs = now - notifTime;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    
+    return notifTime.toLocaleDateString();
+}
+
+// Hook notifications into existing functions
+// Override the existing showToast to also add notifications
+const originalShowToast = window.showToast || function() {};
+window.showToast = function(message, type = 'info') {
+    // Call original toast
+    originalShowToast.call(this, message, type);
+    
+    // Add notification for important messages
+    if (type === 'success' || type === 'error') {
+        const title = type === 'success' ? 'Success' : 'Error';
+        addNotification(type, title, message);
+    }
+};

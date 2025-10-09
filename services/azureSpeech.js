@@ -1,6 +1,8 @@
 const sdk = require('microsoft-cognitiveservices-speech-sdk');
 const fs = require('fs').promises;
 const path = require('path');
+const os = require('os');
+const gridfs = require('./gridfs');
 
 // Azure Speech configuration from environment variables
 const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY;
@@ -55,11 +57,10 @@ async function generateAzureAudio(text, settings = {}) {
 
         // Create unique filename
         const filename = `azure_${Date.now()}_${Math.random().toString(36).substring(7)}.mp3`;
-        const audioDir = path.join(__dirname, '..', 'uploads', 'audio');
-        const filepath = path.join(audioDir, filename);
-
-        // Ensure audio directory exists
-        await fs.mkdir(audioDir, { recursive: true });
+        
+        // Use system temp directory for temporary file
+        const tempDir = os.tmpdir();
+        const filepath = path.join(tempDir, filename);
 
         // Create audio config for file output
         const audioConfig = sdk.AudioConfig.fromAudioFileOutput(filepath);
@@ -110,16 +111,42 @@ async function generateAzureAudio(text, settings = {}) {
 
             console.log('✅ Audio generated:', fileSizeKB, 'KB');
             console.log('⏱️  Duration:', duration);
-            console.log('💾 Saved to:', filename);
+            
+            // Upload to GridFS
+            console.log('☁️  Uploading audio to GridFS...');
+            const uploadResult = await gridfs.uploadFileToGridFS(
+                filepath,
+                filename,
+                {
+                    contentType: 'audio/mpeg',
+                    provider: 'azure',
+                    voiceName: voiceName,
+                    duration: duration,
+                    fileSize: stats.size
+                }
+            );
+            
+            // Delete temporary file
+            try {
+                await fs.unlink(filepath);
+                console.log('🗑️  Temporary file deleted');
+            } catch (unlinkError) {
+                console.warn('⚠️  Could not delete temp file:', unlinkError.message);
+            }
+            
+            const gridfsId = uploadResult.fileId.toString();
+            console.log('💾 Audio saved to GridFS:', gridfsId);
 
             return {
                 success: true,
-                filepath: filepath,
+                filepath: gridfsId,
                 filename: filename,
-                url: `/uploads/audio/${filename}`,
+                url: `/api/documents/file/${gridfsId}`,
                 fileSize: stats.size,
                 duration: duration,
-                provider: 'azure'
+                provider: 'azure',
+                storageType: 'gridfs',
+                gridfsId: gridfsId
             };
         } else {
             throw new Error(`Speech synthesis failed: ${result.errorDetails}`);

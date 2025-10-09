@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { initGridFS } = require('../services/gridfs');
 require('dotenv').config();
 
 const connectDB = async () => {
@@ -8,6 +9,10 @@ const connectDB = async () => {
       useUnifiedTopology: true,
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    
+    // Initialize GridFS after connection
+    initGridFS();
+    
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);
