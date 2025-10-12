@@ -2515,17 +2515,18 @@ async function handleSaveEditedVoice(e) {
     }
     
     try {
-        const response = await apiRequest(`/api/custom-voices/${voiceId}`, {
-            method: 'PUT',
-            body: JSON.stringify({
+        const response = await apiRequest(
+            `/api/custom-voices/${voiceId}`,
+            'PUT',
+            {
                 name,
                 description,
                 gender,
                 language,
                 accent,
                 tags
-            })
-        });
+            }
+        );
         
         if (response.success) {
             showToast('Voice updated successfully', 'success');
@@ -2552,9 +2553,10 @@ async function handleDeleteVoice(voice) {
     }
     
     try {
-        const response = await apiRequest(`/api/custom-voices/${voice._id}`, {
-            method: 'DELETE'
-        });
+        const response = await apiRequest(
+            `/api/custom-voices/${voice._id}`,
+            'DELETE'
+        );
         
         if (response.success) {
             showToast('Voice deleted successfully', 'success');
@@ -2569,12 +2571,13 @@ async function handleDeleteVoice(voice) {
 // Handle set default voice
 async function handleSetDefaultVoice(voice) {
     try {
-        const response = await apiRequest(`/api/custom-voices/${voice._id}`, {
-            method: 'PUT',
-            body: JSON.stringify({
+        const response = await apiRequest(
+            `/api/custom-voices/${voice._id}`,
+            'PUT',
+            {
                 isDefault: true
-            })
-        });
+            }
+        );
         
         if (response.success) {
             showToast(`"${voice.name}" set as default voice`, 'success');
