@@ -1,10 +1,11 @@
 {
   "name": "podcast-generator",
   "version": "1.0.0",
-  "description": "A web application for generating podcasts from documents",
+  "description": "A web application for generating podcasts from documents with RVC voice cloning",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "npm install",
     "dev": "nodemon server.js",
     "setup:google": "node setup-google-cloud.js",
     "check:google": "node check-google-config.js",
@@ -19,10 +20,16 @@
     "deploy:appengine": "gcloud app deploy app.yaml --quiet",
     "deploy:build": "gcloud builds submit --config cloudbuild.yaml"
   },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "keywords": [
     "podcast",
     "generator",
     "text-to-speech",
+    "voice-cloning",
+    "rvc",
     "documents"
   ],
   "author": "",

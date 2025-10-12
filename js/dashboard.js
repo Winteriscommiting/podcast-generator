@@ -2300,10 +2300,13 @@ function updateVoicesCount(count) {
 
 // Open upload voice modal
 function openUploadVoiceModal() {
+    console.log('🎭 Opening upload voice modal...');
     const modal = document.getElementById('upload-voice-modal');
+    console.log('Modal found:', !!modal);
     if (modal) {
         modal.classList.add('active');
         resetUploadVoiceForm();
+        console.log('✅ Modal opened and form reset');
     }
 }
 
@@ -2324,11 +2327,19 @@ function resetUploadVoiceForm() {
 
 // Handle voice file selection
 function handleVoiceFileSelect(file) {
+    console.log('📎 File selected:', file ? file.name : 'null');
     if (!file) return;
+    
+    console.log('File details:', {
+        name: file.name,
+        type: file.type,
+        size: file.size
+    });
     
     // Validate file type
     const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/x-m4a', 'audio/m4a'];
     if (!allowedTypes.includes(file.type)) {
+        console.error('❌ Invalid file type:', file.type);
         showToast('Invalid file type. Please upload MP3, WAV, OGG, or M4A files.', 'error');
         return;
     }
@@ -2336,11 +2347,13 @@ function handleVoiceFileSelect(file) {
     // Validate file size (50MB max)
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
+        console.error('❌ File too large:', file.size);
         showToast('File size exceeds 50MB limit', 'error');
         return;
     }
     
     selectedVoiceFile = file;
+    console.log('✅ File validation passed, stored in selectedVoiceFile');
     
     // Show file preview
     const filePreview = document.getElementById('voice-file-preview');
@@ -2351,6 +2364,7 @@ function handleVoiceFileSelect(file) {
         fileName.textContent = file.name;
         fileSize.textContent = formatFileSize(file.size);
         filePreview.hidden = false;
+        console.log('✅ File preview displayed');
     }
 }
 
@@ -2358,8 +2372,12 @@ function handleVoiceFileSelect(file) {
 async function handleVoiceUpload(e) {
     e.preventDefault();
     
+    console.log('🎤 Starting voice upload...');
+    console.log('Selected file:', selectedVoiceFile);
+    
     if (!selectedVoiceFile) {
         showToast('Please select an audio file', 'error');
+        console.error('❌ No file selected');
         return;
     }
     
@@ -2372,8 +2390,11 @@ async function handleVoiceUpload(e) {
     
     if (!name) {
         showToast('Please enter a voice name', 'error');
+        console.error('❌ No voice name');
         return;
     }
+    
+    console.log('📝 Voice details:', { name, gender, language, fileSize: selectedVoiceFile.size });
     
     // Create FormData
     const formData = new FormData();
@@ -2394,6 +2415,8 @@ async function handleVoiceUpload(e) {
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
         }
         
+        console.log('📤 Sending upload request...');
+        
         const response = await fetch('/api/custom-voices/upload', {
             method: 'POST',
             headers: {
@@ -2402,10 +2425,22 @@ async function handleVoiceUpload(e) {
             body: formData
         });
         
+        console.log('📥 Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Upload failed:', errorText);
+            throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log('✅ Upload response:', data);
         
         if (data.success) {
-            showToast('Voice sample uploaded successfully!', 'success');
+            showToast('Voice sample uploaded successfully! Training will begin shortly.', 'success');
+            
+            // Reset form
+            resetUploadVoiceForm();
             
             // Close modal
             const modal = document.getElementById('upload-voice-modal');
@@ -2414,13 +2449,14 @@ async function handleVoiceUpload(e) {
             }
             
             // Reload voices
+            console.log('🔄 Reloading voices...');
             await loadCustomVoices();
         } else {
             throw new Error(data.message || 'Upload failed');
         }
     } catch (error) {
-        console.error('Upload error:', error);
-        showToast(error.message || 'Failed to upload voice sample', 'error');
+        console.error('❌ Upload error:', error);
+        showToast(error.message || 'Failed to upload voice sample. Please try again.', 'error');
     } finally {
         const submitBtn = document.getElementById('voice-upload-submit');
         if (submitBtn) {
@@ -2544,16 +2580,21 @@ function handlePlayVoice(voice) {
 
 // Initialize voice cloning events
 function initVoiceCloning() {
+    console.log('🎬 Initializing voice cloning module...');
+    
     // Upload voice button
     const uploadVoiceBtn = document.getElementById('upload-voice-btn');
+    console.log('Upload button found:', !!uploadVoiceBtn);
     if (uploadVoiceBtn) {
         uploadVoiceBtn.addEventListener('click', openUploadVoiceModal);
     }
     
     // Upload form
     const uploadForm = document.getElementById('upload-voice-form');
+    console.log('Upload form found:', !!uploadForm);
     if (uploadForm) {
         uploadForm.addEventListener('submit', handleVoiceUpload);
+        console.log('✅ Upload form event listener attached');
     }
     
     // Edit form
@@ -2564,8 +2605,10 @@ function initVoiceCloning() {
     
     // File input
     const fileInput = document.getElementById('voice-audio-file');
+    console.log('File input found:', !!fileInput);
     if (fileInput) {
         fileInput.addEventListener('change', (e) => {
+            console.log('📁 File input changed, files:', e.target.files.length);
             if (e.target.files.length > 0) {
                 handleVoiceFileSelect(e.target.files[0]);
             }
@@ -2574,8 +2617,10 @@ function initVoiceCloning() {
     
     // Drop zone
     const dropZone = document.getElementById('voice-drop-zone');
+    console.log('Drop zone found:', !!dropZone);
     if (dropZone) {
         dropZone.addEventListener('click', () => {
+            console.log('🖱️ Drop zone clicked, triggering file input');
             fileInput?.click();
         });
         
