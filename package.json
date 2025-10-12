@@ -44,7 +44,7 @@
     "mammoth": "^1.6.0",
     "microsoft-cognitiveservices-speech-sdk": "^1.46.0",
     "mongoose": "^7.5.0",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^1.4.4",
     "multer-gridfs-storage": "^5.0.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
