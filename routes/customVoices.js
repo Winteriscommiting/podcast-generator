@@ -310,8 +310,8 @@ router.delete('/:id', protect, async (req, res) => {
       console.error('Error deleting audio file:', error);
     }
 
-    // Delete the voice record
-    await voice.remove();
+    // Delete the voice record (using deleteOne instead of deprecated remove)
+    await CustomVoice.deleteOne({ _id: voice._id });
 
     console.log(`🗑️  Deleted custom voice: ${voice.name}`);
 
