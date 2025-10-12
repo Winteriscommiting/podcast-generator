@@ -33,6 +33,7 @@ const documentRoutes = require('./routes/document');
 const summaryRoutes = require('./routes/summaries');
 const podcastRoutes = require('./routes/podcasts');
 const voicesRoutes = require('./routes/voices');
+const customVoicesRoutes = require('./routes/customVoices');
 const errorHandler = require('./utils/errorHandler');
 const { initializeDocumentAI } = require('./services/googleDocumentAI');
 const { initializeVertexAI } = require('./services/vertexAI');
@@ -134,6 +135,7 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/summaries', summaryRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/voices', voicesRoutes);
+app.use('/api/custom-voices', customVoicesRoutes);
 
 // Serve main pages
 app.get('/', (req, res) => {

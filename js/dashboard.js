@@ -98,6 +98,11 @@ document.addEventListener('DOMContentLoaded', function() {
     initNotificationSystem();
     console.log('✅ Profile and notifications initialized');
     
+    // Initialize voice cloning
+    console.log('🔧 Initializing voice cloning...');
+    initVoiceCloning();
+    console.log('✅ Voice cloning initialized');
+    
     // Logout button
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
@@ -108,12 +113,16 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDocuments();
     loadSummaries();
     loadPodcasts();
+    loadCustomVoices();
     
     // Global search
     const globalSearch = document.getElementById('global-search');
     if (globalSearch) {
         globalSearch.addEventListener('input', handleGlobalSearch);
     }
+    
+    // Apply saved theme
+    applySavedTheme();
 });
 
 // Initialize dashboard
@@ -2214,5 +2223,401 @@ async function handleSharePodcast(podcastId) {
             showToast('Failed to share podcast', 'error');
         }
     }
+}
+
+// =======================
+// Voice Cloning Functions
+// =======================
+
+let allCustomVoices = [];
+let selectedVoiceFile = null;
+
+// Load custom voices
+async function loadCustomVoices() {
+    try {
+        const response = await apiRequest('/api/custom-voices');
+        
+        if (response.success) {
+            allCustomVoices = response.voices;
+            renderCustomVoices(response.voices);
+            updateVoicesCount(response.voices.length);
+        }
+    } catch (error) {
+        console.error('Error loading custom voices:', error);
+        showToast('Failed to load custom voices', 'error');
+    }
+}
+
+// Render custom voices
+function renderCustomVoices(voices) {
+    const voicesGrid = document.getElementById('voices-grid');
+    
+    if (!voicesGrid) return;
+    
+    if (voices.length === 0) {
+        voicesGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-microphone-alt"></i>
+                <h3>No custom voices yet</h3>
+                <p>Upload a voice sample to get started</p>
+                <button class="btn btn-primary" id="empty-upload-voice-btn">
+                    <i class="fas fa-upload"></i>
+                    Upload Voice Sample
+                </button>
+            </div>
+        `;
+        
+        const emptyUploadBtn = document.getElementById('empty-upload-voice-btn');
+        if (emptyUploadBtn) {
+            emptyUploadBtn.addEventListener('click', openUploadVoiceModal);
+        }
+        
+        return;
+    }
+    
+    voicesGrid.innerHTML = '';
+    
+    voices.forEach(voice => {
+        const card = new VoiceCloneCard(voice, {
+            onPlay: handlePlayVoice,
+            onEdit: handleEditVoice,
+            onDelete: handleDeleteVoice,
+            onSetDefault: handleSetDefaultVoice
+        });
+        
+        voicesGrid.appendChild(card.element);
+        card.mount();
+    });
+}
+
+// Update voices count
+function updateVoicesCount(count) {
+    const voicesCount = document.getElementById('voices-count');
+    if (voicesCount) {
+        voicesCount.textContent = count;
+    }
+}
+
+// Open upload voice modal
+function openUploadVoiceModal() {
+    const modal = document.getElementById('upload-voice-modal');
+    if (modal) {
+        modal.classList.add('active');
+        resetUploadVoiceForm();
+    }
+}
+
+// Reset upload voice form
+function resetUploadVoiceForm() {
+    const form = document.getElementById('upload-voice-form');
+    if (form) {
+        form.reset();
+    }
+    
+    selectedVoiceFile = null;
+    
+    const filePreview = document.getElementById('voice-file-preview');
+    if (filePreview) {
+        filePreview.hidden = true;
+    }
+}
+
+// Handle voice file selection
+function handleVoiceFileSelect(file) {
+    if (!file) return;
+    
+    // Validate file type
+    const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/x-m4a', 'audio/m4a'];
+    if (!allowedTypes.includes(file.type)) {
+        showToast('Invalid file type. Please upload MP3, WAV, OGG, or M4A files.', 'error');
+        return;
+    }
+    
+    // Validate file size (50MB max)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showToast('File size exceeds 50MB limit', 'error');
+        return;
+    }
+    
+    selectedVoiceFile = file;
+    
+    // Show file preview
+    const filePreview = document.getElementById('voice-file-preview');
+    const fileName = document.getElementById('voice-file-name');
+    const fileSize = document.getElementById('voice-file-size');
+    
+    if (filePreview && fileName && fileSize) {
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        filePreview.hidden = false;
+    }
+}
+
+// Handle voice upload
+async function handleVoiceUpload(e) {
+    e.preventDefault();
+    
+    if (!selectedVoiceFile) {
+        showToast('Please select an audio file', 'error');
+        return;
+    }
+    
+    const name = document.getElementById('voice-name').value.trim();
+    const description = document.getElementById('voice-description').value.trim();
+    const gender = document.getElementById('voice-gender').value;
+    const language = document.getElementById('voice-language').value;
+    const accent = document.getElementById('voice-accent').value.trim();
+    const tags = document.getElementById('voice-tags').value.trim();
+    
+    if (!name) {
+        showToast('Please enter a voice name', 'error');
+        return;
+    }
+    
+    // Create FormData
+    const formData = new FormData();
+    formData.append('voiceAudio', selectedVoiceFile);
+    formData.append('name', name);
+    formData.append('description', description);
+    formData.append('gender', gender);
+    formData.append('language', language);
+    formData.append('accent', accent);
+    formData.append('tags', tags);
+    
+    try {
+        showToast('Uploading voice sample...', 'info');
+        
+        const submitBtn = document.getElementById('voice-upload-submit');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        }
+        
+        const response = await fetch('/api/custom-voices/upload', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('Voice sample uploaded successfully!', 'success');
+            
+            // Close modal
+            const modal = document.getElementById('upload-voice-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            
+            // Reload voices
+            await loadCustomVoices();
+        } else {
+            throw new Error(data.message || 'Upload failed');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showToast(error.message || 'Failed to upload voice sample', 'error');
+    } finally {
+        const submitBtn = document.getElementById('voice-upload-submit');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-upload"></i> Upload Voice';
+        }
+    }
+}
+
+// Handle edit voice
+function handleEditVoice(voice) {
+    const modal = document.getElementById('edit-voice-modal');
+    if (!modal) return;
+    
+    // Fill form with voice data
+    document.getElementById('edit-voice-id').value = voice._id;
+    document.getElementById('edit-voice-name').value = voice.name;
+    document.getElementById('edit-voice-description').value = voice.description || '';
+    document.getElementById('edit-voice-gender').value = voice.gender;
+    document.getElementById('edit-voice-language').value = voice.language;
+    document.getElementById('edit-voice-accent').value = voice.accent || '';
+    document.getElementById('edit-voice-tags').value = voice.tags ? voice.tags.join(', ') : '';
+    
+    modal.classList.add('active');
+}
+
+// Handle save edited voice
+async function handleSaveEditedVoice(e) {
+    e.preventDefault();
+    
+    const voiceId = document.getElementById('edit-voice-id').value;
+    const name = document.getElementById('edit-voice-name').value.trim();
+    const description = document.getElementById('edit-voice-description').value.trim();
+    const gender = document.getElementById('edit-voice-gender').value;
+    const language = document.getElementById('edit-voice-language').value;
+    const accent = document.getElementById('edit-voice-accent').value.trim();
+    const tags = document.getElementById('edit-voice-tags').value.trim();
+    
+    if (!name) {
+        showToast('Please enter a voice name', 'error');
+        return;
+    }
+    
+    try {
+        const response = await apiRequest(`/api/custom-voices/${voiceId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                name,
+                description,
+                gender,
+                language,
+                accent,
+                tags
+            })
+        });
+        
+        if (response.success) {
+            showToast('Voice updated successfully', 'success');
+            
+            // Close modal
+            const modal = document.getElementById('edit-voice-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            
+            // Reload voices
+            await loadCustomVoices();
+        }
+    } catch (error) {
+        console.error('Update error:', error);
+        showToast('Failed to update voice', 'error');
+    }
+}
+
+// Handle delete voice
+async function handleDeleteVoice(voice) {
+    if (!confirm(`Are you sure you want to delete "${voice.name}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const response = await apiRequest(`/api/custom-voices/${voice._id}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.success) {
+            showToast('Voice deleted successfully', 'success');
+            await loadCustomVoices();
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        showToast('Failed to delete voice', 'error');
+    }
+}
+
+// Handle set default voice
+async function handleSetDefaultVoice(voice) {
+    try {
+        const response = await apiRequest(`/api/custom-voices/${voice._id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                isDefault: true
+            })
+        });
+        
+        if (response.success) {
+            showToast(`"${voice.name}" set as default voice`, 'success');
+            await loadCustomVoices();
+        }
+    } catch (error) {
+        console.error('Set default error:', error);
+        showToast('Failed to set default voice', 'error');
+    }
+}
+
+// Handle play voice
+function handlePlayVoice(voice) {
+    console.log('Playing voice:', voice.name);
+    // Audio playback is handled within the VoiceCloneCard component
+}
+
+// Initialize voice cloning events
+function initVoiceCloning() {
+    // Upload voice button
+    const uploadVoiceBtn = document.getElementById('upload-voice-btn');
+    if (uploadVoiceBtn) {
+        uploadVoiceBtn.addEventListener('click', openUploadVoiceModal);
+    }
+    
+    // Upload form
+    const uploadForm = document.getElementById('upload-voice-form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', handleVoiceUpload);
+    }
+    
+    // Edit form
+    const editForm = document.getElementById('edit-voice-form');
+    if (editForm) {
+        editForm.addEventListener('submit', handleSaveEditedVoice);
+    }
+    
+    // File input
+    const fileInput = document.getElementById('voice-audio-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleVoiceFileSelect(e.target.files[0]);
+            }
+        });
+    }
+    
+    // Drop zone
+    const dropZone = document.getElementById('voice-drop-zone');
+    if (dropZone) {
+        dropZone.addEventListener('click', () => {
+            fileInput?.click();
+        });
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            
+            if (e.dataTransfer.files.length > 0) {
+                handleVoiceFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+    }
+    
+    // File remove button
+    const fileRemoveBtn = document.getElementById('voice-file-remove');
+    if (fileRemoveBtn) {
+        fileRemoveBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectedVoiceFile = null;
+            fileInput.value = '';
+            document.getElementById('voice-file-preview').hidden = true;
+        });
+    }
+    
+    console.log('✅ Voice cloning initialized');
+}
+
+// Format file size helper
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 

@@ -265,46 +265,21 @@
                 <div class="tab-pane" id="voice-cloning-tab">
                     <div class="content-header">
                         <h2>Voice Cloning</h2>
+                        <button class="btn btn-primary" id="upload-voice-btn">
+                            <i class="fas fa-upload"></i> Upload Voice Sample
+                        </button>
                     </div>
                     
                     <div class="voice-cloning-container">
                         <div class="voice-cloning-info">
                             <h3>Create Custom Voices</h3>
-                            <p>Upload a sample of your voice to create a custom voice model for your podcasts.</p>
-                        </div>
-                        
-                        <div class="voice-upload-area">
-                            <div class="upload-zone">
-                                <i class="fas fa-microphone-alt"></i>
-                                <h4>Upload Voice Sample</h4>
-                                <p>Upload a 5-10 minute audio sample in MP3 or WAV format</p>
-                                <button class="btn btn-outline">Choose File</button>
-                            </div>
+                            <p>Upload a sample of your voice to create a custom voice model for your podcasts. Supported formats: MP3, WAV, OGG, M4A (Max: 50MB)</p>
                         </div>
                         
                         <div class="custom-voices">
-                            <h3>Your Custom Voices</h3>
-                            <div class="voices-grid">
-                                <div class="voice-card">
-                                    <div class="voice-avatar">
-                                        <i class="fas fa-user-circle"></i>
-                                    </div>
-                                    <div class="voice-info">
-                                        <h4>My Voice</h4>
-                                        <p>Created on June 15, 2023</p>
-                                    </div>
-                                    <div class="voice-actions">
-                                        <button type="button" class="btn btn-icon" title="Play">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-icon" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-icon" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                            <h3>Your Custom Voices (<span id="voices-count">0</span>)</h3>
+                            <div class="voices-grid" id="voices-grid">
+                                <!-- Voice cards will be inserted here -->
                             </div>
                         </div>
                     </div>
@@ -821,6 +796,177 @@
         </div>
     </div>
 
+    <!-- Upload Voice Modal -->
+    <div class="modal" id="upload-voice-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Upload Voice Sample</h3>
+                <button class="modal-close" data-modal="upload-voice-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="upload-voice-form">
+                    <div class="form-group">
+                        <label for="voice-name">Voice Name *</label>
+                        <input type="text" id="voice-name" class="form-control" placeholder="My Custom Voice" required maxlength="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="voice-description">Description</label>
+                        <textarea id="voice-description" class="form-control" rows="3" placeholder="Describe this voice..." maxlength="500"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="voice-gender">Gender</label>
+                            <select id="voice-gender" class="form-control">
+                                <option value="unknown">Unknown</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="neutral">Neutral</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="voice-language">Language</label>
+                            <select id="voice-language" class="form-control">
+                                <option value="en-US">English (US)</option>
+                                <option value="en-GB">English (UK)</option>
+                                <option value="es-ES">Spanish</option>
+                                <option value="fr-FR">French</option>
+                                <option value="de-DE">German</option>
+                                <option value="it-IT">Italian</option>
+                                <option value="pt-BR">Portuguese (Brazil)</option>
+                                <option value="ja-JP">Japanese</option>
+                                <option value="ko-KR">Korean</option>
+                                <option value="zh-CN">Chinese (Mandarin)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="voice-accent">Accent (optional)</label>
+                        <input type="text" id="voice-accent" class="form-control" placeholder="e.g., British, Southern, etc." maxlength="50">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="voice-tags">Tags (optional)</label>
+                        <input type="text" id="voice-tags" class="form-control" placeholder="Comma-separated tags" maxlength="200">
+                        <small>Example: professional, energetic, calm</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Audio File *</label>
+                        <div class="file-drop-zone" id="voice-drop-zone">
+                            <input type="file" id="voice-audio-file" accept="audio/mp3,audio/wav,audio/ogg,audio/m4a" hidden>
+                            <i class="fas fa-microphone-alt"></i>
+                            <p>Drag and drop an audio file here or click to browse</p>
+                            <small>Supported formats: MP3, WAV, OGG, M4A (Max: 50MB)</small>
+                        </div>
+                        <div id="voice-file-preview" class="file-info" hidden>
+                            <i class="fas fa-file-audio"></i>
+                            <span id="voice-file-name"></span>
+                            <span id="voice-file-size"></span>
+                            <button type="button" class="btn btn-icon" id="voice-file-remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="voice-upload-info">
+                        <h4><i class="fas fa-info-circle"></i> Tips for best results:</h4>
+                        <ul>
+                            <li>Use clear, high-quality audio</li>
+                            <li>5-10 minutes of audio recommended</li>
+                            <li>Speak naturally with varied intonation</li>
+                            <li>Avoid background noise</li>
+                        </ul>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" data-modal="upload-voice-modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="voice-upload-submit">
+                            <i class="fas fa-upload"></i> Upload Voice
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Voice Modal -->
+    <div class="modal" id="edit-voice-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Voice</h3>
+                <button class="modal-close" data-modal="edit-voice-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-voice-form">
+                    <input type="hidden" id="edit-voice-id">
+                    
+                    <div class="form-group">
+                        <label for="edit-voice-name">Voice Name *</label>
+                        <input type="text" id="edit-voice-name" class="form-control" required maxlength="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-voice-description">Description</label>
+                        <textarea id="edit-voice-description" class="form-control" rows="3" maxlength="500"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-voice-gender">Gender</label>
+                            <select id="edit-voice-gender" class="form-control">
+                                <option value="unknown">Unknown</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="neutral">Neutral</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-voice-language">Language</label>
+                            <select id="edit-voice-language" class="form-control">
+                                <option value="en-US">English (US)</option>
+                                <option value="en-GB">English (UK)</option>
+                                <option value="es-ES">Spanish</option>
+                                <option value="fr-FR">French</option>
+                                <option value="de-DE">German</option>
+                                <option value="it-IT">Italian</option>
+                                <option value="pt-BR">Portuguese (Brazil)</option>
+                                <option value="ja-JP">Japanese</option>
+                                <option value="ko-KR">Korean</option>
+                                <option value="zh-CN">Chinese (Mandarin)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-voice-accent">Accent</label>
+                        <input type="text" id="edit-voice-accent" class="form-control" maxlength="50">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-voice-tags">Tags</label>
+                        <input type="text" id="edit-voice-tags" class="form-control" maxlength="200">
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" data-modal="edit-voice-modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="js/utils/api.js"></script>
     <script src="js/utils/helpers.js"></script>
     <script src="js/components/Component.js"></script>
@@ -828,6 +974,7 @@
     <script src="js/components/DocumentCard.js"></script>
     <script src="js/components/SummaryCard.js"></script>
     <script src="js/components/PodcastCard.js"></script>
+    <script src="js/components/VoiceCloneCard.js"></script>
     <script src="js/browserTTS.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/dashboard.js"></script>
