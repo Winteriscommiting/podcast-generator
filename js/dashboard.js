@@ -447,11 +447,12 @@ function updateSummaryStats(summaries) {
     }
     
     if (timeSaved) {
-        const completedSummaries = summaries.filter(s => s.processingStatus === 'completed');
+        const completedSummaries = summaries.filter(s => s.processingStatus === 'completed' && s.document && s.document.wordCount);
         if (completedSummaries.length > 0) {
             const totalTimeSaved = completedSummaries.reduce((sum, s) => {
                 const originalReadingTime = Math.ceil(s.document.wordCount / 200);
-                return sum + (originalReadingTime - s.readingTime);
+                const summaryReadingTime = s.readingTime || Math.ceil(s.wordCount / 200);
+                return sum + Math.max(0, originalReadingTime - summaryReadingTime);
             }, 0);
             timeSaved.textContent = `${totalTimeSaved} min`;
         } else {
