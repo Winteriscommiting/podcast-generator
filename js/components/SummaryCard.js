@@ -20,12 +20,25 @@ class SummaryCard extends Component {
         this.element = tempDiv.firstElementChild;
     }
     
+    // Calculate time saved from reading full document vs reading summary
+    calculateTimeSaved() {
+        const { summary } = this;
+        if (!summary.document || !summary.document.wordCount) return 0;
+        
+        // Average reading speed: 200 words per minute
+        const originalReadingTime = Math.ceil(summary.document.wordCount / 200);
+        const summaryReadingTime = summary.readingTime || Math.ceil(summary.wordCount / 200);
+        
+        return Math.max(0, originalReadingTime - summaryReadingTime);
+    }
+    
     render() {
         const { summary } = this;
         const statusClass = getStatusClass(summary.processingStatus);
         const fileIcon = summary.document ? getFileIcon(summary.document.fileType) : 'fa-file';
         const formattedDate = formatDate(summary.createdAt);
         const compressionPercentage = formatPercentage(summary.compressionRatio);
+        const timeSaved = this.calculateTimeSaved();
         
         return `
             <div class="summary-card" data-id="${summary._id}">
@@ -61,6 +74,10 @@ class SummaryCard extends Component {
                             <div class="summary-stat">
                                 <div class="summary-stat-value">${compressionPercentage}</div>
                                 <div class="summary-stat-label">Compression</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-value">${timeSaved} min</div>
+                                <div class="summary-stat-label">Time Saved</div>
                             </div>
                         </div>
                     ` : ''}
@@ -166,6 +183,7 @@ class SummaryCard extends Component {
             // Add stats
             const bodyElement = this.find('.summary-body');
             if (bodyElement) {
+                const timeSaved = this.calculateTimeSaved();
                 const statsElement = document.createElement('div');
                 statsElement.className = 'summary-stats';
                 statsElement.innerHTML = `
@@ -180,6 +198,10 @@ class SummaryCard extends Component {
                     <div class="summary-stat">
                         <div class="summary-stat-value">${formatPercentage(this.summary.compressionRatio)}</div>
                         <div class="summary-stat-label">Compression</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${timeSaved} min</div>
+                        <div class="summary-stat-label">Time Saved</div>
                     </div>
                 `;
                 
