@@ -47,7 +47,8 @@ class VoiceCloneCard extends Component {
                         </div>
                     </div>
                     <div class="voice-status ${statusClass}">
-                        ${capitalize(voice.status)}
+                        <div class="status-text">${capitalize(voice.status)}</div>
+                        <div class="status-detail">${this.getStatusMessage(voice.status)}</div>
                     </div>
                 </div>
                 
@@ -246,6 +247,16 @@ class VoiceCloneCard extends Component {
             'failed': 'status-error'
         };
         return statusMap[status] || 'status-info';
+    }
+    
+    getStatusMessage(status) {
+        const messageMap = {
+            'uploaded': 'Uploaded - Ready for training',
+            'processing': 'Training RVC model... (10-30 min)',
+            'ready': 'Ready to use',
+            'failed': 'Training failed'
+        };
+        return messageMap[status] || status;
     }
     
     getGenderIcon(gender) {

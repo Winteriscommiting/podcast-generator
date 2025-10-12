@@ -61,8 +61,11 @@ const customVoiceSchema = new mongoose.Schema({
   },
   voiceProvider: {
     type: String,
-    enum: ['elevenlabs', 'playht', 'custom', null],
-    default: null
+    enum: ['elevenlabs', 'playht', 'rvc', 'custom', null],
+    default: 'rvc'
+  },
+  modelPath: {
+    type: String, // Path to trained RVC model file
   },
   // Voice characteristics
   gender: {

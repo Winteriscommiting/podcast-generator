@@ -4,8 +4,14 @@ const { GridFsStorage } = require('multer-gridfs-storage');
 const mongoose = require('mongoose');
 const { protect } = require('../middleware/auth');
 const CustomVoice = require('../models/CustomVoice');
+const FormData = require('form-data');
+const axios = require('axios');
+const stream = require('stream');
 
 const router = express.Router();
+
+// RVC Service Configuration
+const RVC_SERVICE_URL = process.env.RVC_SERVICE_URL || 'http://localhost:5000';
 
 // Configure GridFS storage for voice audio files
 const storage = new GridFsStorage({
@@ -94,9 +100,18 @@ router.post('/upload', protect, upload.single('voiceAudio'), async (req, res) =>
 
     console.log(`🎤 Custom voice uploaded: ${customVoice.name} by user ${req.user.email}`);
 
+    // Start RVC model training in background
+    trainRVCModel(customVoice._id.toString(), req.file.id, customVoice.name)
+      .then(() => {
+        console.log(`✅ RVC training started for voice: ${customVoice.name}`);
+      })
+      .catch(err => {
+        console.error(`❌ RVC training failed for voice: ${customVoice.name}`, err);
+      });
+
     res.status(201).json({
       success: true,
-      message: 'Voice sample uploaded successfully',
+      message: 'Voice sample uploaded successfully. Training will begin shortly.',
       voice: customVoice
     });
 
@@ -367,4 +382,92 @@ router.post('/:id/test', protect, async (req, res) => {
   }
 });
 
+// Helper function to train RVC model
+async function trainRVCModel(voiceId, audioFileId, voiceName) {
+  try {
+    console.log(`🔄 Starting RVC training for voice: ${voiceName}`);
+    
+    // Update status to processing
+    await CustomVoice.findByIdAndUpdate(voiceId, {
+      status: 'processing'
+    });
+    
+    // Get audio file from GridFS
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+      bucketName: 'uploads'
+    });
+    
+    // Create audio stream
+    const audioStream = bucket.openDownloadStream(audioFileId);
+    
+    // Prepare form data for RVC service
+    const formData = new FormData();
+    formData.append('audio', audioStream, {
+      filename: `${voiceId}.wav`,
+      contentType: 'audio/wav'
+    });
+    formData.append('voice_id', voiceId);
+    formData.append('voice_name', voiceName);
+    
+    // Send to RVC service for training
+    const response = await axios.post(`${RVC_SERVICE_URL}/train`, formData, {
+      headers: {
+        ...formData.getHeaders()
+      },
+      timeout: 30 * 60 * 1000 // 30 minutes timeout for training
+    });
+    
+    if (response.data.success) {
+      // Update status to ready
+      await CustomVoice.findByIdAndUpdate(voiceId, {
+        status: 'ready',
+        modelPath: response.data.model_path
+      });
+      
+      console.log(`✅ RVC training completed for voice: ${voiceName}`);
+    } else {
+      throw new Error(response.data.error || 'Training failed');
+    }
+    
+  } catch (error) {
+    console.error(`❌ RVC training error for voice ${voiceName}:`, error.message);
+    
+    // Update status to failed
+    await CustomVoice.findByIdAndUpdate(voiceId, {
+      status: 'failed'
+    });
+  }
+}
+
+// Helper function to convert audio using RVC
+async function convertAudioWithRVC(modelId, inputAudioStream) {
+  try {
+    console.log(`🔄 Converting audio with RVC model: ${modelId}`);
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('audio', inputAudioStream, {
+      filename: 'input.wav',
+      contentType: 'audio/wav'
+    });
+    formData.append('model_id', modelId);
+    
+    // Send to RVC service for conversion
+    const response = await axios.post(`${RVC_SERVICE_URL}/convert`, formData, {
+      headers: {
+        ...formData.getHeaders()
+      },
+      responseType: 'stream',
+      timeout: 5 * 60 * 1000 // 5 minutes timeout
+    });
+    
+    return response.data;
+    
+  } catch (error) {
+    console.error(`❌ RVC conversion error:`, error.message);
+    throw error;
+  }
+}
+
 module.exports = router;
+
