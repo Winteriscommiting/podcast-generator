@@ -108,6 +108,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loadDocuments();
     loadSummaries();
     loadPodcasts();
+    
+    // Global search
+    const globalSearch = document.getElementById('global-search');
+    if (globalSearch) {
+        globalSearch.addEventListener('input', handleGlobalSearch);
+    }
 });
 
 // Initialize dashboard
@@ -282,6 +288,7 @@ async function loadDocuments() {
         const response = await apiRequest('/api/documents');
         
         if (response.success) {
+            allDocuments = response.documents; // Store for search
             renderDocuments(response.documents);
             updateDocumentCount(response.documents.length);
         }
@@ -348,6 +355,7 @@ async function loadSummaries() {
         const response = await apiRequest('/api/summaries');
         
         if (response.success) {
+            allSummaries = response.summaries; // Store for search
             renderSummaries(response.summaries);
             updateSummaryCount(response.summaries.length);
             updateSummaryStats(response.summaries);
@@ -458,6 +466,7 @@ async function loadPodcasts() {
         const response = await apiRequest('/api/podcasts');
         
         if (response.success) {
+            allPodcasts = response.podcasts; // Store for search
             renderPodcasts(response.podcasts);
             updatePodcastCount(response.podcasts.length);
         }
@@ -2082,3 +2091,127 @@ window.showToast = function(message, type = 'info') {
         addNotification(type, title, message);
     }
 };
+
+// ==================== GLOBAL SEARCH ====================
+
+let allDocuments = [];
+let allSummaries = [];
+let allPodcasts = [];
+
+// Handle global search
+function handleGlobalSearch(e) {
+    const searchTerm = e.target.value.toLowerCase().trim();
+    
+    if (!searchTerm) {
+        // Reset all views
+        renderDocuments(allDocuments);
+        renderSummaries(allSummaries);
+        renderPodcasts(allPodcasts);
+        return;
+    }
+    
+    // Get current active tab
+    const activeTab = document.querySelector('.nav-item.active');
+    const currentTab = activeTab ? activeTab.getAttribute('data-tab') : 'documents';
+    
+    switch (currentTab) {
+        case 'documents':
+            const filteredDocs = allDocuments.filter(doc => 
+                doc.title.toLowerCase().includes(searchTerm) ||
+                (doc.extractedText && doc.extractedText.toLowerCase().includes(searchTerm))
+            );
+            renderDocuments(filteredDocs);
+            showToast(`Found ${filteredDocs.length} document(s)`, 'info');
+            break;
+            
+        case 'summaries':
+            const filteredSummaries = allSummaries.filter(summary =>
+                summary.document?.title.toLowerCase().includes(searchTerm) ||
+                summary.summaryText.toLowerCase().includes(searchTerm)
+            );
+            renderSummaries(filteredSummaries);
+            showToast(`Found ${filteredSummaries.length} summar${filteredSummaries.length === 1 ? 'y' : 'ies'}`, 'info');
+            break;
+            
+        case 'podcasts':
+            const filteredPodcasts = allPodcasts.filter(podcast =>
+                podcast.title.toLowerCase().includes(searchTerm) ||
+                (podcast.audioText && podcast.audioText.toLowerCase().includes(searchTerm)) ||
+                podcast.document?.title.toLowerCase().includes(searchTerm)
+            );
+            renderPodcasts(filteredPodcasts);
+            showToast(`Found ${filteredPodcasts.length} podcast(s)`, 'info');
+            break;
+    }
+}
+
+// ==================== THEME TOGGLE ====================
+
+function toggleTheme() {
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    // Update theme
+    document.body.classList.toggle('dark-theme', newTheme === 'dark');
+    localStorage.setItem('theme', newTheme);
+    
+    // Update icon
+    const themeToggle = document.getElementById('theme-toggle');
+    const icon = themeToggle.querySelector('i');
+    if (icon) {
+        icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+    
+    showToast(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode enabled`, 'success');
+}
+
+// Apply saved theme on load
+function applySavedTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+        const themeToggle = document.getElementById('theme-toggle');
+        const icon = themeToggle?.querySelector('i');
+        if (icon) {
+            icon.className = 'fas fa-sun';
+        }
+    }
+}
+
+// Call on page load
+applySavedTheme();
+
+// ==================== SHARE FUNCTIONALITY ====================
+
+async function handleSharePodcast(podcastId) {
+    try {
+        const podcast = allPodcasts.find(p => p._id === podcastId);
+        if (!podcast) {
+            showToast('Podcast not found', 'error');
+            return;
+        }
+        
+        const shareData = {
+            title: podcast.title,
+            text: `Listen to my podcast: ${podcast.title}`,
+            url: window.location.origin + `/podcast/${podcastId}`
+        };
+        
+        // Check if Web Share API is supported
+        if (navigator.share) {
+            await navigator.share(shareData);
+            showToast('Podcast shared successfully', 'success');
+        } else {
+            // Fallback: copy link to clipboard
+            const shareUrl = shareData.url;
+            await navigator.clipboard.writeText(shareUrl);
+            showToast('Link copied to clipboard!', 'success');
+        }
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            console.error('Share error:', error);
+            showToast('Failed to share podcast', 'error');
+        }
+    }
+}
+
