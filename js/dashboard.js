@@ -2304,9 +2304,23 @@ function openUploadVoiceModal() {
     const modal = document.getElementById('upload-voice-modal');
     console.log('Modal found:', !!modal);
     if (modal) {
-        modal.classList.add('active');
+        modal.classList.add('show'); // Changed from 'active' to 'show'
         resetUploadVoiceForm();
         console.log('✅ Modal opened and form reset');
+        console.log('Modal classes:', modal.className);
+        console.log('Modal display:', window.getComputedStyle(modal).display);
+        
+        // Log drop zone after modal opens
+        setTimeout(() => {
+            const dropZone = document.getElementById('voice-drop-zone');
+            if (dropZone) {
+                console.log('📍 Drop zone after modal open:');
+                console.log('  - Element:', dropZone);
+                console.log('  - Visible:', dropZone.offsetParent !== null);
+                console.log('  - Display:', window.getComputedStyle(dropZone).display);
+                console.log('  - Position:', dropZone.getBoundingClientRect());
+            }
+        }, 100);
     }
 }
 
@@ -2445,7 +2459,7 @@ async function handleVoiceUpload(e) {
             // Close modal
             const modal = document.getElementById('upload-voice-modal');
             if (modal) {
-                modal.classList.remove('active');
+                modal.classList.remove('show'); // Changed from 'active' to 'show'
             }
             
             // Reload voices
@@ -2480,7 +2494,7 @@ function handleEditVoice(voice) {
     document.getElementById('edit-voice-accent').value = voice.accent || '';
     document.getElementById('edit-voice-tags').value = voice.tags ? voice.tags.join(', ') : '';
     
-    modal.classList.add('active');
+    modal.classList.add('show'); // Changed from 'active' to 'show'
 }
 
 // Handle save edited voice
@@ -2519,7 +2533,7 @@ async function handleSaveEditedVoice(e) {
             // Close modal
             const modal = document.getElementById('edit-voice-modal');
             if (modal) {
-                modal.classList.remove('active');
+                modal.classList.remove('show'); // Changed from 'active' to 'show'
             }
             
             // Reload voices
@@ -2619,8 +2633,12 @@ function initVoiceCloning() {
     const dropZone = document.getElementById('voice-drop-zone');
     console.log('Drop zone found:', !!dropZone);
     if (dropZone) {
+        console.log('Drop zone element:', dropZone);
+        console.log('Drop zone visible:', dropZone.offsetParent !== null);
+        
         dropZone.addEventListener('click', () => {
             console.log('🖱️ Drop zone clicked, triggering file input');
+            console.log('File input element:', fileInput);
             fileInput?.click();
         });
         
