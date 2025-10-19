@@ -100,10 +100,13 @@ class VoiceCloneCard extends Component {
                         <i class="fas fa-play"></i>
                     </button>
                 ` : ''}
-                <label class="btn btn-icon btn-convert" title="Convert Test">
-                    <input type="file" accept="audio/*" style="display:none" class="convert-input" />
-                    <i class="fas fa-exchange-alt"></i>
-                </label>
+                <div class="convert-block">
+                    <label class="btn btn-icon btn-convert" title="Convert Test">
+                        <input type="file" accept="audio/*" style="display:none" class="convert-input" />
+                        <i class="fas fa-exchange-alt"></i>
+                    </label>
+                    <input type="text" class="convert-text" placeholder="Optional text (XTTS)" title="Text for XTTS"> 
+                </div>
                 <button class="btn btn-icon btn-edit" data-id="${voice._id}" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -162,10 +165,17 @@ class VoiceCloneCard extends Component {
             convertInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+                // find associated text input
+                const convertBlock = e.target.closest('.convert-block');
+                const textInput = convertBlock?.querySelector('.convert-text');
+                const text = textInput?.value?.trim();
+
                 try {
                     showToast('Converting audio...', 'info');
                     const formData = new FormData();
                     formData.append('audio', file);
+                    if (text) formData.append('text', text);
+
                     const token = getAuthToken?.() || localStorage.getItem('authToken') || localStorage.getItem('token');
                     const resp = await fetch(`/api/custom-voices/${this.voice._id}/convert`, {
                         method: 'POST',
@@ -174,20 +184,29 @@ class VoiceCloneCard extends Component {
                         },
                         body: formData
                     });
+
                     if (!resp.ok) {
-                        const text = await resp.text();
-                        throw new Error(text || 'Convert failed');
+                        const textErr = await resp.text();
+                        throw new Error(textErr || 'Convert failed');
                     }
-                    const blob = await resp.blob();
+
+                    // Stream audio to an <audio> element for inline playback
+                    const arrayBuffer = await resp.arrayBuffer();
+                    const blob = new Blob([arrayBuffer], { type: resp.headers.get('content-type') || 'audio/wav' });
                     const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${this.voice.name}-converted.wav`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    showToast('Converted audio downloaded', 'success');
+
+                    // Create or reuse a player element inside the card
+                    let player = this.find('audio.convert-player');
+                    if (!player) {
+                        player = document.createElement('audio');
+                        player.className = 'convert-player';
+                        player.controls = true;
+                        this.element.appendChild(player);
+                    }
+                    player.src = url;
+                    player.play().catch(() => {});
+
+                    showToast('Converted audio ready (playing)', 'success');
                 } catch (err) {
                     console.error('Convert error:', err);
                     showToast('Failed to convert audio', 'error');

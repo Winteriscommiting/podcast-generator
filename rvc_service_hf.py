@@ -255,6 +255,27 @@ class HuggingFaceRVCService:
                 except Exception as e:
                     print(f"   XTTS not available or failed: {e}")
                     torchaudio.save(output_path, input_waveform, input_sr)
+            elif backend == 'freevc' or backend == 'rvc' or backend == 'knn-vc':
+                # Try to find a cached HF repo with an inference script for FreeVC/RVC
+                handled = False
+                if hf_repo and hf_repo in self.hf_models:
+                    repo_path = self.hf_models[hf_repo].get('path')
+                    infer_script = os.path.join(repo_path, 'infer.py')
+                    if os.path.exists(infer_script):
+                        try:
+                            # Execute the inference script as a subprocess to avoid heavy imports in this process
+                            print(f"🔧 Running inference script: {infer_script}")
+                            import subprocess
+                            cmd = [sys.executable, infer_script, '--input', input_audio_path, '--output', output_path]
+                            if hf_revision:
+                                cmd += ['--revision', hf_revision]
+                            subprocess.check_call(cmd)
+                            handled = True
+                        except Exception as e:
+                            print(f"⚠️  Inference script failed: {e}")
+                if not handled:
+                    print("ℹ️  No FreeVC/RVC inference available; falling back to passthrough")
+                    torchaudio.save(output_path, input_waveform, input_sr)
             else:
                 # Placeholder: copy input to output
                 torchaudio.save(output_path, input_waveform, input_sr)
