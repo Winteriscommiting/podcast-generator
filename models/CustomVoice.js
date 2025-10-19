@@ -67,6 +67,28 @@ const customVoiceSchema = new mongoose.Schema({
   modelPath: {
     type: String, // Path to trained RVC model file
   },
+  // Hugging Face integration
+  hfRepo: {
+    type: String, // e.g., username/rvc-voice-model
+  },
+  hfRevision: {
+    type: String, // optional commit/tag
+  },
+  rvcBackend: {
+    type: String,
+    enum: ['rvc', 'freevc', 'xtts', 'knn-vc', null],
+    default: 'rvc'
+  },
+  trainingProvider: {
+    type: String,
+    enum: ['local-rvc', 'huggingface', 'none'],
+    default: 'local-rvc'
+  },
+  trainingMode: {
+    type: String,
+    enum: ['trained', 'zero-shot', 'mock'],
+    default: 'trained'
+  },
   // Voice characteristics
   gender: {
     type: String,

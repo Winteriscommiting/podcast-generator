@@ -41,6 +41,15 @@ except ImportError as e:
     print(f"   Error: {e}")
     print("   Install: pip install transformers torch torchaudio soundfile")
 
+# Optional: Hugging Face Hub for model caching
+HF_HUB_AVAILABLE = False
+try:
+    from huggingface_hub import snapshot_download
+    HF_HUB_AVAILABLE = True
+    print("✅ huggingface_hub available for model caching")
+except Exception:
+    print("ℹ️  huggingface_hub not installed; HF repo caching disabled.")
+
 # Check for GPU
 DEVICE = "cuda" if HF_AVAILABLE and torch.cuda.is_available() else "cpu"
 if HF_AVAILABLE:
@@ -61,6 +70,27 @@ class HuggingFaceRVCService:
             print("🎭 Running in MOCK mode")
         
         self.load_existing_models()
+
+    def ensure_hf_model_cached(self, repo_id: str, revision: str | None = None) -> str | None:
+        """Download/cache a Hugging Face repo if available; return local path."""
+        if not HF_HUB_AVAILABLE:
+            return None
+        try:
+            print(f"📥 Caching HF repo: {repo_id} @ {revision or 'latest'}")
+            cache_dir = os.path.join(MODELS_DIR, 'hf')
+            os.makedirs(cache_dir, exist_ok=True)
+            local_dir = snapshot_download(repo_id=repo_id, revision=revision, cache_dir=cache_dir)
+            # Track in hf_models map
+            self.hf_models[repo_id] = {
+                'path': local_dir,
+                'revision': revision,
+                'cached': True,
+            }
+            print(f"✅ Cached to: {local_dir}")
+            return local_dir
+        except Exception as e:
+            print(f"⚠️  HF cache failed for {repo_id}: {e}")
+            return None
     
     def load_pretrained_models(self):
         """Load pre-trained voice conversion models from Hugging Face"""
@@ -173,7 +203,7 @@ class HuggingFaceRVCService:
             'mock': True
         }
     
-    def convert_voice(self, model_id, input_audio_path, output_path):
+    def convert_voice(self, model_id, input_audio_path, output_path, backend: str | None = None, text: str | None = None, hf_repo: str | None = None, hf_revision: str | None = None):
         """
         Convert audio using voice sample with Hugging Face models
         """
@@ -193,16 +223,41 @@ class HuggingFaceRVCService:
             ref_path = self.models[model_id]['path']
             ref_waveform, ref_sr = torchaudio.load(ref_path)
             
-            # Here you would use a voice conversion model
-            # For now, we'll use a simple approach
-            # In production, you'd use something like:
-            # - kNN-VC (k-Nearest Neighbors Voice Conversion)
-            # - FreeVC
-            # - YourTTS from Coqui
-            
-            # Placeholder: just copy input to output for now
-            # Real implementation would do voice conversion here
-            torchaudio.save(output_path, input_waveform, input_sr)
+            # Optionally cache HF repo if provided (for future real VC backends)
+            if hf_repo:
+                self.ensure_hf_model_cached(hf_repo, hf_revision)
+
+            # Backend selection placeholder
+            backend = (backend or 'rvc').lower()
+            print(f"   Backend: {backend}")
+
+            if backend == 'xtts':
+                # Optional XTTS zero-shot TTS using Coqui TTS if installed
+                try:
+                    from TTS.api import TTS  # type: ignore
+                    # Use English XTTS v2
+                    model_name = os.environ.get('XTTS_MODEL', 'tts_models/multilingual/multi-dataset/xtts_v2')
+                    print(f"   Using XTTS model: {model_name}")
+                    tts = TTS(model_name)
+                    # Prepare reference speaker wav
+                    ref_tmp = os.path.join(TEMP_DIR, f"{model_id}_ref.wav")
+                    torchaudio.save(ref_tmp, ref_waveform, ref_sr)
+                    # Generate speech from text if provided, else transcode input audio (fallback copy)
+                    if text:
+                        tts.tts_to_file(text=text, file_path=output_path, speaker_wav=ref_tmp, language='en')
+                    else:
+                        # Without text, we don't have VC; fallback to input
+                        torchaudio.save(output_path, input_waveform, input_sr)
+                    try:
+                        os.remove(ref_tmp)
+                    except:  # noqa: E722
+                        pass
+                except Exception as e:
+                    print(f"   XTTS not available or failed: {e}")
+                    torchaudio.save(output_path, input_waveform, input_sr)
+            else:
+                # Placeholder: copy input to output
+                torchaudio.save(output_path, input_waveform, input_sr)
             
             print(f"✅ Conversion complete")
             
@@ -299,6 +354,10 @@ def convert():
         
         audio_file = request.files['audio']
         model_id = request.form.get('model_id')
+        backend = request.form.get('backend')
+        text = request.form.get('text')
+        hf_repo = request.form.get('hf_repo')
+        hf_revision = request.form.get('hf_revision')
         
         if not model_id:
             return jsonify({'success': False, 'error': 'model_id is required'}), 400
@@ -309,7 +368,7 @@ def convert():
         
         # Convert
         temp_output = os.path.join(TEMP_DIR, f"{model_id}_output.wav")
-        result = service.convert_voice(model_id, temp_input, temp_output)
+        result = service.convert_voice(model_id, temp_input, temp_output, backend=backend, text=text, hf_repo=hf_repo, hf_revision=hf_revision)
         
         if result['success']:
             return send_file(temp_output, mimetype='audio/wav')

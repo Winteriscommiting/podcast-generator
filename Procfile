@@ -1,1 +1,1 @@
-web: python rvc_service.py & node server.js
+web: python rvc_service_hf.py & node server.js

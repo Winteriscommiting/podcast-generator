@@ -17,7 +17,7 @@
                     <span>Podcast Generator</span>
                 </div>
                 <button class="sidebar-toggle">
-                    <i class="fas fa-bars"></i>
+                <form id="edit-voice-form">
                 </button>
             </div>
             <nav class="sidebar-nav">
@@ -67,6 +67,31 @@
                         <i class="fas fa-bell"></i>
                         <span>Notifications</span>
                     </a>
+
+                    <div class="form-divider"></div>
+                    <h4>Hugging Face Integration</h4>
+                    <div class="form-group">
+                        <label for="edit-voice-hf-repo">HF Repo (owner/name)</label>
+                        <input type="text" id="edit-voice-hf-repo" class="form-control" placeholder="username/my-rvc-model">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-voice-hf-revision">HF Revision (optional)</label>
+                        <input type="text" id="edit-voice-hf-revision" class="form-control" placeholder="main or commit sha">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-voice-backend">Backend</label>
+                        <select id="edit-voice-backend" class="form-control">
+                            <option value="rvc">RVC (Default)</option>
+                            <option value="freevc">FreeVC</option>
+                            <option value="xtts">XTTS</option>
+                            <option value="knn-vc">kNN-VC</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="link-hf-btn" class="btn btn-secondary">
+                            <i class="fab fa-hive"></i> Link Hugging Face Model
+                        </button>
+                    </div>
                     <a href="#" class="user-menu-item" id="logout-btn">
                         <i class="fas fa-sign-out-alt"></i>
                         <span>Logout</span>

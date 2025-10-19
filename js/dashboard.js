@@ -2493,8 +2493,50 @@ function handleEditVoice(voice) {
     document.getElementById('edit-voice-language').value = voice.language;
     document.getElementById('edit-voice-accent').value = voice.accent || '';
     document.getElementById('edit-voice-tags').value = voice.tags ? voice.tags.join(', ') : '';
+    // Prefill HF fields if present
+    const hfRepoEl = document.getElementById('edit-voice-hf-repo');
+    const hfRevEl = document.getElementById('edit-voice-hf-revision');
+    const backendEl = document.getElementById('edit-voice-backend');
+    if (hfRepoEl) hfRepoEl.value = voice.hfRepo || '';
+    if (hfRevEl) hfRevEl.value = voice.hfRevision || '';
+    if (backendEl) backendEl.value = voice.rvcBackend || 'rvc';
     
     modal.classList.add('show'); // Changed from 'active' to 'show'
+
+    // Attach HF link handler
+    const linkBtn = document.getElementById('link-hf-btn');
+    if (linkBtn) {
+        linkBtn.onclick = async () => {
+            const hfRepo = hfRepoEl?.value.trim();
+            const hfRevision = hfRevEl?.value.trim();
+            const rvcBackend = backendEl?.value;
+            if (!hfRepo) {
+                showToast('Enter a Hugging Face repo (owner/name)', 'error');
+                return;
+            }
+            try {
+                linkBtn.disabled = true;
+                linkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Linking...';
+                const resp = await apiRequest(`/api/custom-voices/${voice._id}/hf`, 'PUT', {
+                    hfRepo,
+                    hfRevision,
+                    rvcBackend
+                });
+                if (resp.success) {
+                    showToast('HF model linked to voice', 'success');
+                    await loadCustomVoices();
+                } else {
+                    showToast(resp.message || 'Failed to link HF model', 'error');
+                }
+            } catch (err) {
+                console.error('HF link error:', err);
+                showToast('Failed to link HF model', 'error');
+            } finally {
+                linkBtn.disabled = false;
+                linkBtn.innerHTML = '<i class="fab fa-hive"></i> Link Hugging Face Model';
+            }
+        };
+    }
 }
 
 // Handle save edited voice
