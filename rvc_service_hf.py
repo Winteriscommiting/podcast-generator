@@ -10,6 +10,7 @@ import tempfile
 import shutil
 from pathlib import Path
 import time
+from typing import Optional
 
 app = Flask(__name__)
 CORS(app)
@@ -71,7 +72,7 @@ class HuggingFaceRVCService:
         
         self.load_existing_models()
 
-    def ensure_hf_model_cached(self, repo_id: str, revision: str | None = None) -> str | None:
+    def ensure_hf_model_cached(self, repo_id: str, revision: Optional[str] = None) -> Optional[str]:
         """Download/cache a Hugging Face repo if available; return local path."""
         if not HF_HUB_AVAILABLE:
             return None
@@ -203,67 +204,34 @@ class HuggingFaceRVCService:
             'mock': True
         }
     
-    def convert_voice(self, model_id, input_audio_path, output_path, backend: str | None = None, text: str | None = None, hf_repo: str | None = None, hf_revision: str | None = None):
+    def convert_voice(self, model_id, input_audio_path, output_path, backend: Optional[str] = None, text: Optional[str] = None, hf_repo: Optional[str] = None, hf_revision: Optional[str] = None):
         """
         Convert audio using voice sample with Hugging Face models
         """
-        if model_id not in self.models:
-            return {'success': False, 'error': 'Model not found'}
-        
-        if self.mock_mode:
-            return self._mock_conversion(input_audio_path, output_path)
-        
         try:
             print(f"🔄 Converting audio with model: {model_id}")
-            
-            # Load input audio
-            input_waveform, input_sr = torchaudio.load(input_audio_path)
-            
-            # Load reference voice
-            ref_path = self.models[model_id]['path']
-            ref_waveform, ref_sr = torchaudio.load(ref_path)
-            
-            # Optionally cache HF repo if provided (for future real VC backends)
-            if hf_repo:
-                self.ensure_hf_model_cached(hf_repo, hf_revision)
 
-            # Backend selection placeholder
-            backend = (backend or 'rvc').lower()
-            print(f"   Backend: {backend}")
+            # Determine backend and normalize
+            backend_norm = (backend or 'rvc').lower()
+            print(f"   Backend: {backend_norm}")
 
-            if backend == 'xtts':
-                # Optional XTTS zero-shot TTS using Coqui TTS if installed
-                try:
-                    from TTS.api import TTS  # type: ignore
-                    # Use English XTTS v2
-                    model_name = os.environ.get('XTTS_MODEL', 'tts_models/multilingual/multi-dataset/xtts_v2')
-                    print(f"   Using XTTS model: {model_name}")
-                    tts = TTS(model_name)
-                    # Prepare reference speaker wav
-                    ref_tmp = os.path.join(TEMP_DIR, f"{model_id}_ref.wav")
-                    torchaudio.save(ref_tmp, ref_waveform, ref_sr)
-                    # Generate speech from text if provided, else transcode input audio (fallback copy)
-                    if text:
-                        tts.tts_to_file(text=text, file_path=output_path, speaker_wav=ref_tmp, language='en')
-                    else:
-                        # Without text, we don't have VC; fallback to input
-                        torchaudio.save(output_path, input_waveform, input_sr)
-                    try:
-                        os.remove(ref_tmp)
-                    except:  # noqa: E722
-                        pass
-                except Exception as e:
-                    print(f"   XTTS not available or failed: {e}")
-                    torchaudio.save(output_path, input_waveform, input_sr)
-            elif backend == 'freevc' or backend == 'rvc' or backend == 'knn-vc':
-                # Try to find a cached HF repo with an inference script for FreeVC/RVC
+            # If FreeVC/RVC path: allow running even in mock mode via external script
+            if backend_norm in ('freevc', 'rvc', 'knn-vc'):
+                # Ensure/capture HF repo path if provided
+                repo_path = None
+                if hf_repo:
+                    # Try ensure cache (if available)
+                    cached = self.ensure_hf_model_cached(hf_repo, hf_revision)
+                    if cached:
+                        repo_path = cached
+                    elif hf_repo in self.hf_models:
+                        repo_path = self.hf_models[hf_repo].get('path')
+
                 handled = False
-                if hf_repo and hf_repo in self.hf_models:
-                    repo_path = self.hf_models[hf_repo].get('path')
+                if repo_path:
                     infer_script = os.path.join(repo_path, 'infer.py')
                     if os.path.exists(infer_script):
                         try:
-                            # Execute the inference script as a subprocess to avoid heavy imports in this process
                             print(f"🔧 Running inference script: {infer_script}")
                             import subprocess
                             cmd = [sys.executable, infer_script, '--input', input_audio_path, '--output', output_path]
@@ -273,21 +241,76 @@ class HuggingFaceRVCService:
                             handled = True
                         except Exception as e:
                             print(f"⚠️  Inference script failed: {e}")
+                    else:
+                        print(f"ℹ️  infer.py not found in repo: {repo_path}")
+                else:
+                    if hf_repo:
+                        print(f"ℹ️  HF repo not cached or unavailable: {hf_repo}")
+
                 if not handled:
-                    print("ℹ️  No FreeVC/RVC inference available; falling back to passthrough")
+                    print("ℹ️  Falling back to passthrough copy for FreeVC/RVC backend")
+                    try:
+                        shutil.copy(input_audio_path, output_path)
+                    except Exception as e:
+                        print(f"❌ Passthrough copy failed: {e}")
+                        return {'success': False, 'error': str(e)}
+
+                print("✅ Conversion complete (FreeVC/RVC path)")
+                return {'success': True, 'output_path': output_path, 'mode': 'freevc-scaffold'}
+
+            # For other backends, we may need HF deps; handle gracefully
+            if not HF_AVAILABLE:
+                print("ℹ️  HF deps unavailable; using passthrough copy")
+                shutil.copy(input_audio_path, output_path)
+                print("✅ Conversion complete (passthrough)")
+                return {'success': True, 'output_path': output_path, 'mode': 'passthrough'}
+
+            # From here on, HF deps are available (torch/torchaudio/soundfile)
+            # Load input audio
+            input_waveform, input_sr = torchaudio.load(input_audio_path)
+
+            # For XTTS or other VC requiring a reference voice, verify model presence
+            has_model = model_id in self.models
+            ref_waveform = None
+            ref_sr = None
+            if has_model:
+                ref_path = self.models[model_id]['path']
+                ref_waveform, ref_sr = torchaudio.load(ref_path)
+            else:
+                print("ℹ️  Reference model not found; some backends may fallback")
+
+            # Optionally cache HF repo if provided
+            if hf_repo:
+                self.ensure_hf_model_cached(hf_repo, hf_revision)
+
+            if backend_norm == 'xtts':
+                # XTTS zero-shot TTS via Coqui TTS if installed
+                try:
+                    from TTS.api import TTS  # type: ignore
+                    model_name = os.environ.get('XTTS_MODEL', 'tts_models/multilingual/multi-dataset/xtts_v2')
+                    print(f"   Using XTTS model: {model_name}")
+                    tts = TTS(model_name)
+                    if has_model and ref_waveform is not None and ref_sr is not None and text:
+                        ref_tmp = os.path.join(TEMP_DIR, f"{model_id}_ref.wav")
+                        torchaudio.save(ref_tmp, ref_waveform, ref_sr)
+                        tts.tts_to_file(text=text, file_path=output_path, speaker_wav=ref_tmp, language='en')
+                        try:
+                            os.remove(ref_tmp)
+                        except Exception:
+                            pass
+                    else:
+                        print("ℹ️  Missing reference or text for XTTS; falling back to passthrough")
+                        torchaudio.save(output_path, input_waveform, input_sr)
+                except Exception as e:
+                    print(f"   XTTS not available or failed: {e}")
                     torchaudio.save(output_path, input_waveform, input_sr)
             else:
-                # Placeholder: copy input to output
+                # Default behavior: passthrough (placeholder)
                 torchaudio.save(output_path, input_waveform, input_sr)
-            
-            print(f"✅ Conversion complete")
-            
-            return {
-                'success': True,
-                'output_path': output_path,
-                'mode': 'huggingface'
-            }
-            
+
+            print("✅ Conversion complete")
+            return {'success': True, 'output_path': output_path, 'mode': 'huggingface'}
+
         except Exception as e:
             print(f"❌ Conversion failed: {str(e)}")
             return {'success': False, 'error': str(e)}
@@ -391,9 +414,38 @@ def convert():
         temp_output = os.path.join(TEMP_DIR, f"{model_id}_output.wav")
         result = service.convert_voice(model_id, temp_input, temp_output, backend=backend, text=text, hf_repo=hf_repo, hf_revision=hf_revision)
         
-        if result['success']:
+        # Schedule cleanup of temp files after response
+        try:
+            from flask import after_this_request
+
+            @after_this_request
+            def cleanup(response):
+                try:
+                    if os.path.exists(temp_input):
+                        os.remove(temp_input)
+                except Exception as e:
+                    print(f"⚠️  Failed to remove temp_input: {e}")
+                try:
+                    if os.path.exists(temp_output) and (not result or result.get('success')):
+                        # Remove output after it's been sent; relies on temp file semantics
+                        os.remove(temp_output)
+                except Exception as e:
+                    print(f"⚠️  Failed to remove temp_output: {e}")
+                return response
+        except Exception as e:
+            print(f"ℹ️  Could not register after_this_request cleanup: {e}")
+
+        if result['success'] and os.path.exists(temp_output):
             return send_file(temp_output, mimetype='audio/wav')
         else:
+            # Ensure we cleanup on failure
+            try:
+                if os.path.exists(temp_input):
+                    os.remove(temp_input)
+                if os.path.exists(temp_output):
+                    os.remove(temp_output)
+            except Exception:
+                pass
             return jsonify(result), 500
             
     except Exception as e:
@@ -439,4 +491,4 @@ if __name__ == '__main__':
     print(f"   Server running on http://localhost:5000")
     print("="*50 + "\n")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)

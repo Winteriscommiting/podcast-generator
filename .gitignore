@@ -3,6 +3,14 @@ node_modules/
 # Note: package-lock.json is needed for Railway deployment
 # package-lock.json
 
+# Python virtual environments (do not commit local venvs)
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
 # Environment variables
 .env
 .env.local
@@ -39,6 +47,7 @@ uploads/
 # Build files
 dist/
 build/
+.dist/
 
 # Testing
 coverage/
@@ -46,3 +55,8 @@ coverage/
 
 # Documentation (keep deployment guides)
 !*.md
+
+# RVC runtime/cache directories
+rvc/temp/
+rvc/logs/
+rvc/models/hf/
