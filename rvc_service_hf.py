@@ -15,6 +15,12 @@ from typing import Optional
 app = Flask(__name__)
 CORS(app)
 
+# Limit upload size (default 50MB) to be production-safe
+try:
+    app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '50')) * 1024 * 1024
+except Exception:
+    app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
 # Configuration
 RVC_ROOT = os.path.join(os.path.dirname(__file__), 'rvc')
 MODELS_DIR = os.path.join(RVC_ROOT, 'models')
@@ -72,16 +78,15 @@ class HuggingFaceRVCService:
     def __init__(self):
         self.models = {}
         self.hf_models = {}
-    self.mock_mode = not HF_AVAILABLE
-    self.xtts_available = XTTS_AVAILABLE
-        
+        self.mock_mode = not HF_AVAILABLE
+        self.xtts_available = XTTS_AVAILABLE
+
         if HF_AVAILABLE:
             print("🚀 Initializing Hugging Face RVC Service...")
             self.load_pretrained_models()
         else:
             print("🎭 Running in MOCK mode")
-        
-        self.load_existing_models()
+            self.load_existing_models()
 
     def ensure_hf_model_cached(self, repo_id: str, revision: Optional[str] = None) -> Optional[str]:
         """Download/cache a Hugging Face repo if available; return local path."""
