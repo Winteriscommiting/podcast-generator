@@ -40,6 +40,7 @@ const { initializeVertexAI } = require('./services/vertexAI');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const RVC_SERVICE_URL = process.env.RVC_SERVICE_URL || 'http://127.0.0.1:5000';
 
 // Middleware
 app.use(cors());
@@ -162,6 +163,22 @@ app.get('/api/health', (req, res) => {
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Proxy to Python HF service health (useful on hosted environments)
+app.get('/api/hf/health', async (req, res) => {
+  try {
+    const axios = require('axios');
+    const response = await axios.get(`${RVC_SERVICE_URL}/health`, { timeout: 5000 });
+    res.status(200).json({
+      ok: true,
+      rvc_service_url: RVC_SERVICE_URL,
+      health: response.data,
+    });
+  } catch (err) {
+    console.error('HF service health proxy failed:', err?.message || err);
+    res.status(502).json({ ok: false, error: 'Python HF service not reachable', rvc_service_url: RVC_SERVICE_URL });
+  }
 });
 
 // Error handling middleware
