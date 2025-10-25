@@ -30,6 +30,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Try to import Hugging Face dependencies
 HF_AVAILABLE = False
+XTTS_AVAILABLE = False
 try:
     from transformers import pipeline
     import torch
@@ -41,6 +42,15 @@ except ImportError as e:
     print("⚠️  Hugging Face not installed. Using mock mode.")
     print(f"   Error: {e}")
     print("   Install: pip install transformers torch torchaudio soundfile")
+
+# Optional: Coqui TTS for XTTS zero-shot
+try:
+    from TTS.api import TTS  # type: ignore
+    XTTS_AVAILABLE = True
+    print("✅ Coqui TTS available for XTTS zero-shot")
+except Exception as e:
+    print("ℹ️  Coqui TTS not available; XTTS backend will be disabled.")
+    print(f"   Hint: TTS may require Python 3.10/3.11. Error: {e}")
 
 # Optional: Hugging Face Hub for model caching
 HF_HUB_AVAILABLE = False
@@ -62,7 +72,8 @@ class HuggingFaceRVCService:
     def __init__(self):
         self.models = {}
         self.hf_models = {}
-        self.mock_mode = not HF_AVAILABLE
+    self.mock_mode = not HF_AVAILABLE
+    self.xtts_available = XTTS_AVAILABLE
         
         if HF_AVAILABLE:
             print("🚀 Initializing Hugging Face RVC Service...")
@@ -237,7 +248,8 @@ class HuggingFaceRVCService:
                             cmd = [sys.executable, infer_script, '--input', input_audio_path, '--output', output_path]
                             if hf_revision:
                                 cmd += ['--revision', hf_revision]
-                            subprocess.check_call(cmd)
+                            # Run with timeout to avoid hangs in hosted environments
+                            subprocess.run(cmd, check=True, timeout=int(os.environ.get('HF_INFER_TIMEOUT', '600')))
                             handled = True
                         except Exception as e:
                             print(f"⚠️  Inference script failed: {e}")
@@ -285,25 +297,28 @@ class HuggingFaceRVCService:
 
             if backend_norm == 'xtts':
                 # XTTS zero-shot TTS via Coqui TTS if installed
-                try:
-                    from TTS.api import TTS  # type: ignore
-                    model_name = os.environ.get('XTTS_MODEL', 'tts_models/multilingual/multi-dataset/xtts_v2')
-                    print(f"   Using XTTS model: {model_name}")
-                    tts = TTS(model_name)
-                    if has_model and ref_waveform is not None and ref_sr is not None and text:
-                        ref_tmp = os.path.join(TEMP_DIR, f"{model_id}_ref.wav")
-                        torchaudio.save(ref_tmp, ref_waveform, ref_sr)
-                        tts.tts_to_file(text=text, file_path=output_path, speaker_wav=ref_tmp, language='en')
-                        try:
-                            os.remove(ref_tmp)
-                        except Exception:
-                            pass
-                    else:
-                        print("ℹ️  Missing reference or text for XTTS; falling back to passthrough")
-                        torchaudio.save(output_path, input_waveform, input_sr)
-                except Exception as e:
-                    print(f"   XTTS not available or failed: {e}")
+                if not self.xtts_available:
+                    print("ℹ️  XTTS not available; install Coqui TTS and ensure compatible Python version.")
                     torchaudio.save(output_path, input_waveform, input_sr)
+                else:
+                    try:
+                        model_name = os.environ.get('XTTS_MODEL', 'tts_models/multilingual/multi-dataset/xtts_v2')
+                        print(f"   Using XTTS model: {model_name}")
+                        tts = TTS(model_name)
+                        if has_model and ref_waveform is not None and ref_sr is not None and text:
+                            ref_tmp = os.path.join(TEMP_DIR, f"{model_id}_ref.wav")
+                            torchaudio.save(ref_tmp, ref_waveform, ref_sr)
+                            tts.tts_to_file(text=text, file_path=output_path, speaker_wav=ref_tmp, language=os.environ.get('XTTS_LANG', 'en'))
+                            try:
+                                os.remove(ref_tmp)
+                            except Exception:
+                                pass
+                        else:
+                            print("ℹ️  Missing reference or text for XTTS; falling back to passthrough")
+                            torchaudio.save(output_path, input_waveform, input_sr)
+                    except Exception as e:
+                        print(f"   XTTS failed: {e}")
+                        torchaudio.save(output_path, input_waveform, input_sr)
             else:
                 # Default behavior: passthrough (placeholder)
                 torchaudio.save(output_path, input_waveform, input_sr)
@@ -353,7 +368,9 @@ def health():
         'mode': 'mock' if service.mock_mode else 'huggingface',
         'device': DEVICE if HF_AVAILABLE else 'cpu',
         'models_loaded': len(service.models),
-        'hf_models': len(service.hf_models) if HF_AVAILABLE else 0
+        'hf_models': len(service.hf_models) if HF_AVAILABLE else 0,
+        'xtts_available': service.xtts_available,
+        'hf_hub_available': HF_HUB_AVAILABLE
     })
 
 @app.route('/train', methods=['POST'])
