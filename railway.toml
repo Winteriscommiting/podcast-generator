@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "python rvc_service_hf.py & node server.js"
+startCommand = "python3 rvc_service_hf.py & node server.js"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
