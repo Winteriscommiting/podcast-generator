@@ -34,7 +34,7 @@ const documentSchema = new mongoose.Schema({
   },
   storageType: {
     type: String,
-    enum: ['local', 'gcs'],
+    enum: ['local', 'gcs', 'gridfs'],
     default: 'local',
   },
   extractedText: {

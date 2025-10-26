@@ -36,7 +36,7 @@ const podcastSchema = new mongoose.Schema({
   },
   storageType: {
     type: String,
-    enum: ['local', 'gcs', 'browser'],
+    enum: ['local', 'gcs', 'browser', 'gridfs'],
     default: 'local',
   },
   audioSize: {
