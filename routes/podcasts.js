@@ -111,9 +111,13 @@ router.post('/', protect, async (req, res) => {
 
     // NEW: If custom voice is selected, trigger voice conversion in background
     if (customVoiceId && podcast.audioUrl && podcast.audioUrl !== 'browser-tts') {
+      console.log(`🎤 Custom voice requested: ${customVoiceId} for podcast: ${podcast._id}`);
+      console.log(`   Original audio URL: ${podcast.audioUrl}`);
       convertPodcastVoice(podcast._id, customVoiceId).catch(err => {
-        console.error(`Voice conversion failed for podcast ${podcast._id}:`, err);
+        console.error(`❌ Voice conversion failed for podcast ${podcast._id}:`, err);
       });
+    } else if (customVoiceId) {
+      console.log(`⚠️  Custom voice ${customVoiceId} not applied - audioUrl: ${podcast.audioUrl}`);
     }
     
     res.status(201).json({

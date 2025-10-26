@@ -85,6 +85,9 @@ class PodcastCard extends Component {
     
     renderActions() {
         const { podcast } = this;
+        // Use converted audio if available, otherwise use original
+        const playbackUrl = podcast.convertedAudioUrl || podcast.audioUrl || '';
+        
         // Check if podcast has valid audio (file or browser TTS)
         const isBrowserTTS = podcast.storageType === 'browser' || podcast.audioUrl === 'browser-tts';
         const hasAudioFile = (podcast.audioUrl && podcast.audioUrl !== '' && podcast.audioUrl !== 'null' && podcast.audioUrl !== 'undefined' && podcast.audioUrl !== 'browser-tts' && !podcast.audioUrl.includes('example.com')) || podcast.gcsPath;
@@ -93,11 +96,11 @@ class PodcastCard extends Component {
         return `
             <div class="podcast-actions">
                 ${podcast.processingStatus === 'completed' && hasAudio ? `
-                    <button class="btn btn-primary btn-sm play-btn" data-id="${podcast._id}" data-url="${podcast.audioUrl || ''}">
+                    <button class="btn btn-primary btn-sm play-btn" data-id="${podcast._id}" data-url="${playbackUrl}">
                         <i class="fas fa-play"></i> ${isBrowserTTS ? 'Play (Browser TTS)' : 'Play'}
                     </button>
                     ${!isBrowserTTS ? `
-                        <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${podcast.audioUrl || ''}" data-title="${podcast.title}">
+                        <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${playbackUrl}" data-title="${podcast.title}">
                             <i class="fas fa-download"></i> Download
                         </button>
                     ` : `

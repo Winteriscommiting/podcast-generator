@@ -8,7 +8,9 @@ Flask-CORS==4.0.0
 # Note: RVC requires Python 3.9-3.11 (not 3.12+)
 
 # Option 1: Use pre-built RVC package (easier)
-rvc-python==1.0.0
+# rvc-python==0.1.5  # Using latest available version
+
+# Since we're using Hugging Face models instead of RVC, we can skip this
 
 # Option 2: Install RVC dependencies manually (if Option 1 doesn't work)
 # torch==2.1.0

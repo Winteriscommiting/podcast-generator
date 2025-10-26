@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 import time
 from typing import Optional
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
@@ -45,6 +46,8 @@ try:
     import torch
     import torchaudio
     import soundfile as sf
+    from pydub import AudioSegment
+    import librosa
     HF_AVAILABLE = True
     print("✅ Hugging Face Transformers available")
 except ImportError as e:
@@ -175,8 +178,26 @@ class HuggingFaceRVCService:
                 'message': 'Loading audio file...'
             }
             
-            # Load and process audio
-            waveform, sample_rate = torchaudio.load(audio_path)
+            # Load audio using librosa (handles all formats: MP3, WAV, OGG, M4A, etc.)
+            print(f"   Loading audio file: {audio_path}")
+            try:
+                # librosa can read MP3, WAV, OGG, FLAC, M4A without ffmpeg
+                audio_data, sample_rate = librosa.load(audio_path, sr=None, mono=False)
+                print(f"   ✅ Audio loaded: sample_rate={sample_rate}, shape={audio_data.shape}")
+                
+                # Convert to torch tensor and ensure correct shape
+                if len(audio_data.shape) == 1:
+                    # Mono audio
+                    waveform = torch.from_numpy(audio_data).float().unsqueeze(0)
+                else:
+                    # Stereo or multi-channel
+                    waveform = torch.from_numpy(audio_data).float()
+                    if waveform.shape[0] > waveform.shape[1]:
+                        waveform = waveform.t()  # Ensure [channels, samples]
+                        
+            except Exception as load_err:
+                print(f"   ⚠️ Librosa load failed: {load_err}")
+                raise
             
             # Update progress: Audio loaded
             training_progress[voice_id] = {
@@ -197,7 +218,14 @@ class HuggingFaceRVCService:
             
             # Save processed audio reference
             ref_path = os.path.join(WEIGHTS_DIR, f"{voice_id}.wav")
-            torchaudio.save(ref_path, waveform, sample_rate)
+            # Convert waveform to numpy and transpose if needed for soundfile
+            waveform_np = waveform.numpy()
+            if len(waveform_np.shape) > 1 and waveform_np.shape[0] < waveform_np.shape[1]:
+                waveform_np = waveform_np.T  # soundfile expects [samples, channels]
+            else:
+                waveform_np = waveform_np.squeeze()  # Remove channel dim if mono
+            sf.write(ref_path, waveform_np, sample_rate)
+            print(f"   ✅ Saved reference audio: {ref_path}")
             
             # Update progress: Almost done
             training_progress[voice_id] = {
@@ -334,8 +362,13 @@ class HuggingFaceRVCService:
                 return {'success': True, 'output_path': output_path, 'mode': 'passthrough'}
 
             # From here on, HF deps are available (torch/torchaudio/soundfile)
-            # Load input audio
-            input_waveform, input_sr = torchaudio.load(input_audio_path)
+            # Load input audio using soundfile
+            audio_data, input_sr = sf.read(input_audio_path)
+            input_waveform = torch.from_numpy(audio_data).float()
+            if len(input_waveform.shape) == 1:
+                input_waveform = input_waveform.unsqueeze(0)
+            else:
+                input_waveform = input_waveform.t()
 
             # For XTTS or other VC requiring a reference voice, verify model presence
             has_model = model_id in self.models
@@ -343,7 +376,12 @@ class HuggingFaceRVCService:
             ref_sr = None
             if has_model:
                 ref_path = self.models[model_id]['path']
-                ref_waveform, ref_sr = torchaudio.load(ref_path)
+                ref_audio_data, ref_sr = sf.read(ref_path)
+                ref_waveform = torch.from_numpy(ref_audio_data).float()
+                if len(ref_waveform.shape) == 1:
+                    ref_waveform = ref_waveform.unsqueeze(0)
+                else:
+                    ref_waveform = ref_waveform.t()
             else:
                 print("ℹ️  Reference model not found; some backends may fallback")
 
@@ -355,7 +393,7 @@ class HuggingFaceRVCService:
                 # XTTS zero-shot TTS via Coqui TTS if installed
                 if not self.xtts_available:
                     print("ℹ️  XTTS not available; install Coqui TTS and ensure compatible Python version.")
-                    torchaudio.save(output_path, input_waveform, input_sr)
+                    sf.write(output_path, input_waveform.squeeze().numpy(), input_sr)
                 else:
                     try:
                         model_name = os.environ.get('XTTS_MODEL', 'tts_models/multilingual/multi-dataset/xtts_v2')
@@ -363,7 +401,7 @@ class HuggingFaceRVCService:
                         tts = TTS(model_name)
                         if has_model and ref_waveform is not None and ref_sr is not None and text:
                             ref_tmp = os.path.join(TEMP_DIR, f"{model_id}_ref.wav")
-                            torchaudio.save(ref_tmp, ref_waveform, ref_sr)
+                            sf.write(ref_tmp, ref_waveform.squeeze().numpy(), ref_sr)
                             tts.tts_to_file(text=text, file_path=output_path, speaker_wav=ref_tmp, language=os.environ.get('XTTS_LANG', 'en'))
                             try:
                                 os.remove(ref_tmp)
@@ -371,13 +409,13 @@ class HuggingFaceRVCService:
                                 pass
                         else:
                             print("ℹ️  Missing reference or text for XTTS; falling back to passthrough")
-                            torchaudio.save(output_path, input_waveform, input_sr)
+                            sf.write(output_path, input_waveform.squeeze().numpy(), input_sr)
                     except Exception as e:
                         print(f"   XTTS failed: {e}")
-                        torchaudio.save(output_path, input_waveform, input_sr)
+                        sf.write(output_path, input_waveform.squeeze().numpy(), input_sr)
             else:
                 # Default behavior: passthrough (placeholder)
-                torchaudio.save(output_path, input_waveform, input_sr)
+                sf.write(output_path, input_waveform.squeeze().numpy(), input_sr)
 
             print("✅ Conversion complete")
             return {'success': True, 'output_path': output_path, 'mode': 'huggingface'}
@@ -443,9 +481,15 @@ def train():
         if not voice_id:
             return jsonify({'success': False, 'error': 'voice_id is required'}), 400
         
-        # Save temporary audio file
-        temp_audio = os.path.join(TEMP_DIR, f"{voice_id}_temp.wav")
+        # Get original filename to preserve extension
+        original_filename = audio_file.filename or 'audio.mp3'
+        file_ext = os.path.splitext(original_filename)[1] or '.mp3'
+        
+        # Save temporary audio file with correct extension
+        temp_audio = os.path.join(TEMP_DIR, f"{voice_id}_temp{file_ext}")
         audio_file.save(temp_audio)
+        
+        print(f"📥 Saved temp audio: {temp_audio}")
         
         # Process voice
         result = service.train_model(voice_id, temp_audio, voice_name)
@@ -460,6 +504,8 @@ def train():
         
     except Exception as e:
         print(f"❌ Train error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/convert', methods=['POST'])
