@@ -843,18 +843,18 @@
                 <form id="upload-voice-form">
                     <div class="form-group">
                         <label for="voice-name">Voice Name *</label>
-                        <input type="text" id="voice-name" class="form-control" placeholder="My Custom Voice" required maxlength="100">
+                        <input type="text" id="voice-name" name="voice-name" class="form-control" placeholder="My Custom Voice" required maxlength="100">
                     </div>
 
                     <div class="form-group">
                         <label for="voice-description">Description</label>
-                        <textarea id="voice-description" class="form-control" rows="3" placeholder="Describe this voice..." maxlength="500"></textarea>
+                        <textarea id="voice-description" name="voice-description" class="form-control" rows="3" placeholder="Describe this voice..." maxlength="500"></textarea>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
                             <label for="voice-gender">Gender</label>
-                            <select id="voice-gender" class="form-control">
+                            <select id="voice-gender" name="voice-gender" class="form-control">
                                 <option value="unknown">Unknown</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
@@ -864,7 +864,7 @@
 
                         <div class="form-group">
                             <label for="voice-language">Language</label>
-                            <select id="voice-language" class="form-control">
+                            <select id="voice-language" name="voice-language" class="form-control">
                                 <option value="en-US">English (US)</option>
                                 <option value="en-GB">English (UK)</option>
                                 <option value="es-ES">Spanish</option>
@@ -881,12 +881,12 @@
 
                     <div class="form-group">
                         <label for="voice-accent">Accent (optional)</label>
-                        <input type="text" id="voice-accent" class="form-control" placeholder="e.g., British, Southern, etc." maxlength="50">
+                        <input type="text" id="voice-accent" name="voice-accent" class="form-control" placeholder="e.g., British, Southern, etc." maxlength="50">
                     </div>
 
                     <div class="form-group">
                         <label for="voice-tags">Tags (optional)</label>
-                        <input type="text" id="voice-tags" class="form-control" placeholder="Comma-separated tags" maxlength="200">
+                        <input type="text" id="voice-tags" name="voice-tags" class="form-control" placeholder="Comma-separated tags" maxlength="200">
                         <small>Example: professional, energetic, calm</small>
                     </div>
 
