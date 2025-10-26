@@ -2572,6 +2572,11 @@ async function handleVoiceUpload(e) {
             // Reload voices
             console.log('🔄 Reloading voices...');
             await loadCustomVoices();
+            
+            // Start monitoring training progress
+            if (data.voice && data.voice._id) {
+                monitorTrainingProgress(data.voice._id);
+            }
         } else {
             throw new Error(data.message || 'Upload failed');
         }
@@ -2742,6 +2747,74 @@ async function handleSetDefaultVoice(voice) {
 function handlePlayVoice(voice) {
     console.log('Playing voice:', voice.name);
     // Audio playback is handled within the VoiceCloneCard component
+}
+
+// Monitor training progress
+const activeProgressMonitors = new Set();
+
+async function monitorTrainingProgress(voiceId) {
+    // Prevent multiple monitors for the same voice
+    if (activeProgressMonitors.has(voiceId)) {
+        return;
+    }
+    
+    activeProgressMonitors.add(voiceId);
+    console.log(`📊 Starting progress monitor for voice: ${voiceId}`);
+    
+    const checkProgress = async () => {
+        try {
+            const response = await fetch(`/api/hf/training-progress/${voiceId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log(`Progress for ${voiceId}:`, data);
+                
+                // Update progress bar
+                const progressFill = document.querySelector(`.progress-fill[data-voice-id="${voiceId}"]`);
+                const progressText = document.querySelector(`.progress-text[data-voice-id="${voiceId}"]`);
+                
+                if (progressFill) {
+                    progressFill.style.width = `${data.progress}%`;
+                }
+                
+                if (progressText) {
+                    progressText.textContent = data.message || `${data.progress}%`;
+                }
+                
+                // If completed or failed, stop monitoring and reload
+                if (data.status === 'completed' || data.status === 'failed') {
+                    console.log(`✅ Training ${data.status} for ${voiceId}`);
+                    activeProgressMonitors.delete(voiceId);
+                    
+                    // Reload voices to show updated status
+                    setTimeout(() => {
+                        loadCustomVoices();
+                    }, 1000);
+                    
+                    if (data.status === 'completed') {
+                        showToast('Voice training completed!', 'success');
+                    } else {
+                        showToast('Voice training failed', 'error');
+                    }
+                    
+                    return; // Stop polling
+                }
+                
+                // Continue polling every 2 seconds
+                setTimeout(checkProgress, 2000);
+            } else {
+                // No progress found, stop monitoring
+                console.log(`⚠️ No progress data for ${voiceId}`);
+                activeProgressMonitors.delete(voiceId);
+            }
+        } catch (error) {
+            console.error('Error checking progress:', error);
+            activeProgressMonitors.delete(voiceId);
+        }
+    };
+    
+    // Start checking
+    checkProgress();
 }
 
 // Flag to track if voice cloning has been initialized

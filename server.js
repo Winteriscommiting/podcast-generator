@@ -181,6 +181,19 @@ app.get('/api/hf/health', async (req, res) => {
   }
 });
 
+// Proxy for training progress
+app.get('/api/hf/training-progress/:voiceId', async (req, res) => {
+  try {
+    const axios = require('axios');
+    const { voiceId } = req.params;
+    const response = await axios.get(`${RVC_SERVICE_URL}/training-progress/${voiceId}`, { timeout: 5000 });
+    res.status(200).json(response.data);
+  } catch (err) {
+    console.error('Training progress proxy failed:', err?.message || err);
+    res.status(502).json({ success: false, error: 'Failed to fetch progress' });
+  }
+});
+
 // Error handling middleware
 app.use(errorHandler);
 

@@ -28,6 +28,9 @@ WEIGHTS_DIR = os.path.join(RVC_ROOT, 'weights')
 LOGS_DIR = os.path.join(RVC_ROOT, 'logs')
 TEMP_DIR = os.path.join(RVC_ROOT, 'temp')
 
+# Training progress tracking
+training_progress = {}
+
 # Create directories
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(WEIGHTS_DIR, exist_ok=True)
@@ -157,18 +160,51 @@ class HuggingFaceRVCService:
         With Hugging Face, we don't train but rather prepare the voice sample
         for voice conversion using pre-trained models
         """
+        global training_progress
+        
         if self.mock_mode:
             return self._mock_training(voice_id, voice_name)
         
         try:
             print(f"🎤 Processing voice sample: {voice_name}")
             
+            # Update progress: Start
+            training_progress[voice_id] = {
+                'status': 'processing',
+                'progress': 10,
+                'message': 'Loading audio file...'
+            }
+            
             # Load and process audio
             waveform, sample_rate = torchaudio.load(audio_path)
+            
+            # Update progress: Audio loaded
+            training_progress[voice_id] = {
+                'status': 'processing',
+                'progress': 40,
+                'message': 'Analyzing audio features...'
+            }
+            
+            # Simulate some processing time for better UX
+            time.sleep(0.5)
+            
+            # Update progress: Processing
+            training_progress[voice_id] = {
+                'status': 'processing',
+                'progress': 70,
+                'message': 'Preparing voice model...'
+            }
             
             # Save processed audio reference
             ref_path = os.path.join(WEIGHTS_DIR, f"{voice_id}.wav")
             torchaudio.save(ref_path, waveform, sample_rate)
+            
+            # Update progress: Almost done
+            training_progress[voice_id] = {
+                'status': 'processing',
+                'progress': 90,
+                'message': 'Finalizing...'
+            }
             
             self.models[voice_id] = {
                 'path': ref_path,
@@ -176,6 +212,13 @@ class HuggingFaceRVCService:
                 'name': voice_name,
                 'type': 'custom',
                 'sample_rate': sample_rate
+            }
+            
+            # Update progress: Complete
+            training_progress[voice_id] = {
+                'status': 'completed',
+                'progress': 100,
+                'message': 'Voice training completed!'
             }
             
             print(f"✅ Voice sample processed: {voice_id}")
@@ -190,6 +233,14 @@ class HuggingFaceRVCService:
             
         except Exception as e:
             print(f"❌ Processing failed: {str(e)}")
+            
+            # Update progress: Failed
+            training_progress[voice_id] = {
+                'status': 'failed',
+                'progress': 0,
+                'message': f'Error: {str(e)}'
+            }
+            
             return {
                 'success': False,
                 'error': str(e),
@@ -500,6 +551,24 @@ def delete_model(model_id):
         return jsonify(result)
     else:
         return jsonify(result), 404
+
+@app.route('/training-progress/<voice_id>', methods=['GET'])
+def get_training_progress(voice_id):
+    """Get training progress for a specific voice"""
+    global training_progress
+    
+    if voice_id in training_progress:
+        return jsonify({
+            'success': True,
+            **training_progress[voice_id]
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'status': 'not_found',
+            'progress': 0,
+            'message': 'No training in progress'
+        })
 
 if __name__ == '__main__':
     print("\n" + "="*50)

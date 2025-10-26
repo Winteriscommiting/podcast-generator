@@ -49,6 +49,14 @@ class VoiceCloneCard extends Component {
                     <div class="voice-status ${statusClass}">
                         <div class="status-text">${capitalize(voice.status)}</div>
                         <div class="status-detail">${this.getStatusMessage(voice.status)}</div>
+                        ${voice.status === 'processing' ? `
+                        <div class="training-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" data-voice-id="${voice._id}" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-text" data-voice-id="${voice._id}">Preparing...</div>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
                 
