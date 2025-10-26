@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["python311", "nodejs_20", "ffmpeg"]
+cmds = [
+  "pip install --upgrade pip setuptools wheel",
+  "pip install -r requirements.txt",
+  "pip install -r requirements-huggingface.txt",
+  "pip install -r requirements-xtts.txt || echo 'XTTS optional - skipping'"
+]
+
+[phases.build]
+cmds = ["echo 'Build phase complete'"]
+
+[start]
+cmd = "python3 rvc_service_hf.py & node server.js"
