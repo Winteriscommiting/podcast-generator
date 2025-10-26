@@ -386,6 +386,44 @@ router.delete('/:id', protect, async (req, res) => {
   }
 });
 
+// Convert podcast voice with custom voice
+router.post('/:id/convert-voice', protect, async (req, res) => {
+  try {
+    const podcast = await Podcast.findById(req.params.id);
+    
+    if (!podcast) {
+      return res.status(404).json({ success: false, message: 'Podcast not found' });
+    }
+    
+    // Make sure user owns the podcast
+    if (podcast.user.toString() !== req.user.id) {
+      return res.status(401).json({ success: false, message: 'Not authorized to convert this podcast' });
+    }
+    
+    const { customVoiceId } = req.body;
+    
+    if (!customVoiceId) {
+      return res.status(400).json({ success: false, message: 'Custom voice ID is required' });
+    }
+    
+    console.log(`🎤 Voice conversion requested for podcast ${podcast._id} with voice ${customVoiceId}`);
+    
+    // Start conversion in background
+    convertPodcastVoice(podcast._id, customVoiceId).catch(err => {
+      console.error('❌ Voice conversion failed:', err);
+    });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Voice conversion started',
+      podcast: podcast
+    });
+  } catch (error) {
+    console.error('Convert voice error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Helper function to convert podcast voice using trained custom voice
 async function convertPodcastVoice(podcastId, customVoiceId) {
   const CustomVoice = require('../models/CustomVoice');
