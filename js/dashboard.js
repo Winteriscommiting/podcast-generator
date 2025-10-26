@@ -2776,15 +2776,13 @@ function initVoiceCloning() {
     const submitBtn = document.getElementById('voice-upload-submit');
     console.log('Submit button found:', !!submitBtn);
     if (submitBtn) {
-        submitBtn.addEventListener('click', (e) => {
+        submitBtn.addEventListener('click', async (e) => {
             console.log('🖱️ Submit button clicked directly');
             e.preventDefault();
+            e.stopPropagation();
             
-            // Manually trigger form submission
-            if (uploadForm) {
-                const event = new Event('submit', { bubbles: true, cancelable: true });
-                uploadForm.dispatchEvent(event);
-            }
+            // Call the upload handler directly
+            await handleVoiceUpload(e);
         });
         console.log('✅ Submit button click listener attached');
     }
