@@ -2474,14 +2474,37 @@ async function handleVoiceUpload(e) {
     
     console.log('📝 Form values:', {
         nameInput: nameInput,
+        nameInputFound: !!nameInput,
         nameValue: nameInput?.value,
+        nameValueLength: nameInput?.value?.length,
         nameTrimmed: name,
-        nameLength: name.length
+        nameLength: name.length,
+        isNameEmpty: name === ''
     });
     
     if (!name) {
         showToast('Please enter a voice name', 'error');
         console.error('❌ No voice name provided');
+        
+        // Force scroll to the voice name field
+        const modal = document.getElementById('upload-voice-modal');
+        const modalBody = modal?.querySelector('.modal-body');
+        const nameInput = document.getElementById('voice-name');
+        
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+        
+        if (nameInput) {
+            nameInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            nameInput.focus();
+            nameInput.style.border = '2px solid red';
+            
+            setTimeout(() => {
+                nameInput.style.border = '';
+            }, 2000);
+        }
+        
         return;
     }
     
