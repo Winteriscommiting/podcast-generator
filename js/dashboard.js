@@ -2364,21 +2364,22 @@ function openUploadVoiceModal() {
     if (modal) {
         modal.classList.add('show'); // Changed from 'active' to 'show'
         resetUploadVoiceForm();
-        console.log('✅ Modal opened and form reset');
-        console.log('Modal classes:', modal.className);
-        console.log('Modal display:', window.getComputedStyle(modal).display);
         
-        // Log drop zone after modal opens
+        // Scroll modal content to top and focus on voice name field
         setTimeout(() => {
-            const dropZone = document.getElementById('voice-drop-zone');
-            if (dropZone) {
-                console.log('📍 Drop zone after modal open:');
-                console.log('  - Element:', dropZone);
-                console.log('  - Visible:', dropZone.offsetParent !== null);
-                console.log('  - Display:', window.getComputedStyle(dropZone).display);
-                console.log('  - Position:', dropZone.getBoundingClientRect());
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.scrollTop = 0;
+            }
+            
+            // Focus on the voice name input
+            const voiceNameInput = document.getElementById('voice-name');
+            if (voiceNameInput) {
+                voiceNameInput.focus();
             }
         }, 100);
+        
+        console.log('✅ Modal opened and form reset');
     }
 }
 
