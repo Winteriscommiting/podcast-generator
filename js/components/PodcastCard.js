@@ -27,6 +27,10 @@ class PodcastCard extends Component {
         const formattedDuration = podcast.duration ? formatDuration(podcast.duration) : 'Unknown';
         const formattedSize = podcast.audioSize ? formatFileSize(podcast.audioSize) : 'Unknown';
         
+        // Check if voice is converted
+        const hasConvertedVoice = podcast.convertedAudioUrl && podcast.conversionStatus === 'completed';
+        const isConverting = podcast.conversionStatus === 'processing';
+        
         return `
             <div class="podcast-card" data-id="${podcast._id}">
                 <div class="podcast-header">
@@ -36,12 +40,17 @@ class PodcastCard extends Component {
                             <i class="fas ${fileIcon}"></i> ${podcast.document ? podcast.document.title : 'Unknown Document'}
                         </div>
                     </div>
-                    <div class="podcast-status ${statusClass}">${capitalize(podcast.processingStatus)}</div>
+                    <div class="podcast-badges">
+                        <div class="podcast-status ${statusClass}">${capitalize(podcast.processingStatus)}</div>
+                        ${hasConvertedVoice ? '<div class="podcast-badge voice-converted"><i class="fas fa-microphone-alt"></i> Voice Converted</div>' : ''}
+                        ${isConverting ? '<div class="podcast-badge voice-converting"><i class="fas fa-spinner fa-spin"></i> Converting...</div>' : ''}
+                    </div>
                 </div>
                 <div class="podcast-body">
                     ${podcast.processingStatus === 'generating' ? this.renderProgress() : ''}
                     ${podcast.processingStatus === 'completed' ? this.renderWaveform() : ''}
                     ${podcast.processingStatus === 'completed' ? this.renderStats(formattedDuration, formattedSize) : ''}
+                    ${hasConvertedVoice ? this.renderVoiceToggle() : ''}
                     ${this.options.showActions ? this.renderActions() : ''}
                 </div>
             </div>
@@ -83,10 +92,33 @@ class PodcastCard extends Component {
         `;
     }
     
+    renderVoiceToggle() {
+        const { podcast } = this;
+        return `
+            <div class="voice-toggle-container">
+                <label class="voice-toggle">
+                    <span class="voice-label">
+                        <i class="fas fa-music"></i> Original Voice
+                    </span>
+                    <input type="checkbox" class="voice-toggle-input" data-id="${podcast._id}" checked>
+                    <span class="voice-toggle-slider"></span>
+                    <span class="voice-label">
+                        <i class="fas fa-microphone-alt"></i> Converted Voice
+                    </span>
+                </label>
+            </div>
+        `;
+    }
+    
     renderActions() {
         const { podcast } = this;
-        // Use converted audio if available, otherwise use original
-        const playbackUrl = podcast.convertedAudioUrl || podcast.audioUrl || '';
+        // Store both URLs for toggling
+        const originalUrl = podcast.audioUrl || '';
+        const convertedUrl = podcast.convertedAudioUrl || '';
+        const hasConvertedVoice = podcast.convertedAudioUrl && podcast.conversionStatus === 'completed';
+        
+        // Use converted audio by default if available
+        const playbackUrl = hasConvertedVoice ? convertedUrl : originalUrl;
         
         // Check if podcast has valid audio (file or browser TTS)
         const isBrowserTTS = podcast.storageType === 'browser' || podcast.audioUrl === 'browser-tts';
@@ -96,16 +128,25 @@ class PodcastCard extends Component {
         return `
             <div class="podcast-actions">
                 ${podcast.processingStatus === 'completed' && hasAudio ? `
-                    <button class="btn btn-primary btn-sm play-btn" data-id="${podcast._id}" data-url="${playbackUrl}">
+                    <button class="btn btn-primary btn-sm play-btn" data-id="${podcast._id}" data-url="${playbackUrl}" data-original-url="${originalUrl}" data-converted-url="${convertedUrl}">
                         <i class="fas fa-play"></i> ${isBrowserTTS ? 'Play (Browser TTS)' : 'Play'}
                     </button>
-                    ${!isBrowserTTS ? `
+                    ${!isBrowserTTS && !hasConvertedVoice ? `
                         <button class="btn btn-outline btn-sm convert-voice-btn" data-id="${podcast._id}">
                             <i class="fas fa-microphone-alt"></i> Convert Voice
                         </button>
-                        <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${playbackUrl}" data-title="${podcast.title}">
-                            <i class="fas fa-download"></i> Download
-                        </button>
+                    ` : ''}
+                    ${!isBrowserTTS ? `
+                        <div class="btn-group">
+                            <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${playbackUrl}" data-title="${podcast.title}">
+                                <i class="fas fa-download"></i> Download ${hasConvertedVoice ? 'Converted' : ''}
+                            </button>
+                            ${hasConvertedVoice ? `
+                                <button class="btn btn-outline btn-sm download-original-btn" data-id="${podcast._id}" data-url="${originalUrl}" data-title="${podcast.title}">
+                                    <i class="fas fa-download"></i> Download Original
+                                </button>
+                            ` : ''}
+                        </div>
                     ` : `
                         <span class="text-muted" style="font-size: 0.75rem;">
                             <i class="fas fa-info-circle"></i> Browser TTS (no download)
@@ -148,6 +189,13 @@ class PodcastCard extends Component {
             this.options.onDownload(podcastId, audioUrl, title);
         });
         
+        this.on('click', '.download-original-btn', (e) => {
+            const podcastId = e.currentTarget.getAttribute('data-id');
+            const audioUrl = e.currentTarget.getAttribute('data-url');
+            const title = e.currentTarget.getAttribute('data-title');
+            this.options.onDownload(podcastId, audioUrl, title + ' (Original)');
+        });
+        
         this.on('click', '.share-btn', (e) => {
             const podcastId = e.currentTarget.getAttribute('data-id');
             this.options.onShare(podcastId);
@@ -156,6 +204,29 @@ class PodcastCard extends Component {
         this.on('click', '.delete-btn', (e) => {
             const podcastId = e.currentTarget.getAttribute('data-id');
             this.options.onDelete(podcastId);
+        });
+        
+        // Voice toggle handler
+        this.on('change', '.voice-toggle-input', (e) => {
+            const isConverted = e.currentTarget.checked;
+            const playBtn = this.find('.play-btn');
+            const downloadBtn = this.find('.download-btn');
+            
+            if (playBtn) {
+                const originalUrl = playBtn.getAttribute('data-original-url');
+                const convertedUrl = playBtn.getAttribute('data-converted-url');
+                const newUrl = isConverted ? convertedUrl : originalUrl;
+                playBtn.setAttribute('data-url', newUrl);
+                
+                // Update download button URL too
+                if (downloadBtn) {
+                    downloadBtn.setAttribute('data-url', newUrl);
+                    const btnText = downloadBtn.querySelector('i').nextSibling;
+                    if (btnText) {
+                        btnText.textContent = ` Download ${isConverted ? 'Converted' : 'Original'}`;
+                    }
+                }
+            }
         });
     }
     
