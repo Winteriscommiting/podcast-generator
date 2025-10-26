@@ -1243,8 +1243,34 @@ function initModals() {
         });
     }
     
+    // Voice upload modal
+    const uploadVoiceModal = document.getElementById('upload-voice-modal');
+    const uploadVoiceModalCloses = document.querySelectorAll('[data-modal="upload-voice-modal"]');
+    
+    uploadVoiceModalCloses.forEach(closeBtn => {
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                uploadVoiceModal.classList.remove('show');
+            });
+        }
+    });
+
+    // Edit voice modal
+    const editVoiceModal = document.getElementById('edit-voice-modal');
+    const editVoiceModalCloses = document.querySelectorAll('[data-modal="edit-voice-modal"]');
+    
+    editVoiceModalCloses.forEach(closeBtn => {
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                editVoiceModal.classList.remove('show');
+            });
+        }
+    });
+
     // Close modals when clicking outside
-    [uploadModal, podcastModal, bulkGenerateModal].forEach(modal => {
+    [uploadModal, podcastModal, bulkGenerateModal, uploadVoiceModal, editVoiceModal].forEach(modal => {
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
