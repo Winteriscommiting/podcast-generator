@@ -494,15 +494,6 @@
                 </div>
                 
                 <div class="form-group">
-                    <label for="custom-voice-selection">Clone with Custom Voice (Optional)</label>
-                    <select id="custom-voice-selection">
-                        <option value="">None - Use original voice</option>
-                        <!-- Custom voices will be populated here -->
-                    </select>
-                    <small class="form-hint">Select a trained voice to convert the podcast audio</small>
-                </div>
-                
-                <div class="form-group">
                     <label for="voice-speed">Speed</label>
                     <div class="slider-container">
                         <input type="range" id="voice-speed" min="0.5" max="2" step="0.1" value="1">
@@ -994,6 +985,73 @@
                         <button type="button" class="btn btn-secondary" data-modal="edit-voice-modal">Cancel</button>
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Convert Voice Modal -->
+    <div class="modal" id="convert-voice-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Convert Podcast Voice</h3>
+                <button class="modal-close" data-modal="convert-voice-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="convert-voice-form">
+                    <input type="hidden" id="convert-podcast-id">
+                    
+                    <div class="form-group">
+                        <label for="convert-podcast-title">Podcast</label>
+                        <input type="text" id="convert-podcast-title" class="form-control" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="convert-voice-selection">Select Custom Voice *</label>
+                        <select id="convert-voice-selection" class="form-control" required>
+                            <option value="">Choose a voice...</option>
+                        </select>
+                        <small class="form-hint">Select a trained voice to convert the podcast audio</small>
+                    </div>
+
+                    <div id="voice-preview-section" class="form-group" style="display: none;">
+                        <label>Voice Preview</label>
+                        <div class="voice-preview-card">
+                            <div class="voice-preview-info">
+                                <h4 id="preview-voice-name"></h4>
+                                <p id="preview-voice-details"></p>
+                            </div>
+                            <audio id="preview-voice-audio" controls style="width: 100%; margin-top: 10px;">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    </div>
+
+                    <div class="voice-convert-info">
+                        <h4><i class="fas fa-info-circle"></i> About Voice Conversion:</h4>
+                        <ul>
+                            <li>This will convert the podcast audio to use your custom voice</li>
+                            <li>The conversion process may take a few minutes</li>
+                            <li>The original audio will be preserved</li>
+                            <li>You can download both versions after conversion</li>
+                        </ul>
+                    </div>
+
+                    <div id="conversion-progress" class="conversion-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="conversion-progress-fill"></div>
+                        </div>
+                        <p class="progress-text" id="conversion-progress-text">Converting voice...</p>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" data-modal="convert-voice-modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="convert-voice-submit">
+                            <i class="fas fa-magic"></i> Convert Voice
                         </button>
                     </div>
                 </form>

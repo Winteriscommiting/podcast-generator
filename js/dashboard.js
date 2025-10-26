@@ -521,7 +521,8 @@ function renderPodcasts(podcasts) {
             onPlay: handlePlayPodcast,
             onDownload: handleDownloadPodcast,
             onDelete: handleDeletePodcast,
-            onShare: handleSharePodcast
+            onShare: handleSharePodcast,
+            onConvertVoice: openConvertVoiceModal
         });
         
         podcastsGrid.appendChild(card.element);
@@ -1269,8 +1270,21 @@ function initModals() {
         }
     });
 
+    // Convert voice modal
+    const convertVoiceModal = document.getElementById('convert-voice-modal');
+    const convertVoiceModalCloses = document.querySelectorAll('[data-modal="convert-voice-modal"]');
+    
+    convertVoiceModalCloses.forEach(closeBtn => {
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                convertVoiceModal.classList.remove('show');
+            });
+        }
+    });
+
     // Close modals when clicking outside
-    [uploadModal, podcastModal, bulkGenerateModal, uploadVoiceModal, editVoiceModal].forEach(modal => {
+    [uploadModal, podcastModal, bulkGenerateModal, uploadVoiceModal, editVoiceModal, convertVoiceModal].forEach(modal => {
         if (modal) {
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
@@ -1547,9 +1561,6 @@ async function initPodcastModal(documentId = null, summaryId = null) {
             
             // Load available voices
             await loadAvailableVoices(voiceProvider.value);
-            
-            // Load custom voices for conversion
-            await loadCustomVoices();
         }
     } catch (error) {
         console.error('Error loading documents:', error);
@@ -1593,7 +1604,6 @@ async function initPodcastModal(documentId = null, summaryId = null) {
             const speed = parseFloat(voiceSpeed.value);
             const pitch = parseFloat(voicePitch.value);
             const volume = parseFloat(voiceVolume.value);
-            const customVoiceId = document.getElementById('custom-voice-selection')?.value || '';
             
             // Validation
             if (!selectedDocumentId) {
@@ -1623,8 +1633,7 @@ async function initPodcastModal(documentId = null, summaryId = null) {
                         speed,
                         pitch,
                         volume
-                    },
-                    customVoiceId: customVoiceId || undefined
+                    }
                 });
                 
                 if (response.success) {
@@ -1674,33 +1683,6 @@ async function initPodcastModal(documentId = null, summaryId = null) {
             }
         } catch (error) {
             console.error('Error loading voices:', error);
-        }
-    }
-    
-    // NEW: Load custom voices for conversion
-    async function loadCustomVoices() {
-        const customVoiceSelection = document.getElementById('custom-voice-selection');
-        if (!customVoiceSelection) return;
-        
-        try {
-            const response = await apiRequest('/api/custom-voices');
-            
-            if (response.success) {
-                // Clear existing options except the first "None" option
-                customVoiceSelection.innerHTML = '<option value="">None - Use original voice</option>';
-                
-                // Add custom voice options (only ready voices)
-                response.voices
-                    .filter(voice => voice.status === 'ready')
-                    .forEach(voice => {
-                        const option = document.createElement('option');
-                        option.value = voice._id;
-                        option.textContent = `${voice.name}${voice.gender ? ` (${voice.gender})` : ''}`;
-                        customVoiceSelection.appendChild(option);
-                    });
-            }
-        } catch (error) {
-            console.error('Error loading custom voices:', error);
         }
     }
 }
@@ -2749,6 +2731,192 @@ function handlePlayVoice(voice) {
     // Audio playback is handled within the VoiceCloneCard component
 }
 
+// Open convert voice modal
+async function openConvertVoiceModal(podcastId) {
+    console.log('🎙️ Opening convert voice modal for podcast:', podcastId);
+    
+    const modal = document.getElementById('convert-voice-modal');
+    const form = document.getElementById('convert-voice-form');
+    const podcastIdInput = document.getElementById('convert-podcast-id');
+    const podcastTitleInput = document.getElementById('convert-podcast-title');
+    const voiceSelection = document.getElementById('convert-voice-selection');
+    const voicePreviewSection = document.getElementById('voice-preview-section');
+    
+    if (!modal || !form || !podcastIdInput || !podcastTitleInput || !voiceSelection) {
+        console.error('❌ Convert voice modal elements not found');
+        return;
+    }
+    
+    try {
+        // Get podcast details
+        const podcastResponse = await apiRequest(`/api/podcasts/${podcastId}`);
+        if (!podcastResponse.success) {
+            showToast('Failed to load podcast details', 'error');
+            return;
+        }
+        
+        const podcast = podcastResponse.podcast;
+        
+        // Set podcast details
+        podcastIdInput.value = podcast._id;
+        podcastTitleInput.value = podcast.title;
+        
+        // Load available custom voices
+        const voicesResponse = await apiRequest('/api/custom-voices');
+        
+        if (voicesResponse.success) {
+            // Clear existing options
+            voiceSelection.innerHTML = '<option value="">Choose a voice...</option>';
+            
+            // Add custom voice options (only ready voices)
+            const readyVoices = voicesResponse.voices.filter(voice => voice.status === 'ready');
+            
+            if (readyVoices.length === 0) {
+                voiceSelection.innerHTML = '<option value="">No trained voices available</option>';
+                showToast('No trained voices available. Please upload and train a voice first.', 'warning');
+                return;
+            }
+            
+            readyVoices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice._id;
+                option.textContent = `${voice.name}${voice.gender ? ` (${voice.gender})` : ''}`;
+                option.dataset.audioPath = voice.audioPath || '';
+                option.dataset.description = voice.description || '';
+                option.dataset.language = voice.language || '';
+                voiceSelection.appendChild(option);
+            });
+        }
+        
+        // Handle voice selection change to show preview
+        voiceSelection.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (this.value && selectedOption.dataset.audioPath) {
+                const previewNameEl = document.getElementById('preview-voice-name');
+                const previewDetailsEl = document.getElementById('preview-voice-details');
+                const previewAudioEl = document.getElementById('preview-voice-audio');
+                
+                if (previewNameEl) previewNameEl.textContent = selectedOption.textContent;
+                if (previewDetailsEl) {
+                    const details = [];
+                    if (selectedOption.dataset.description) details.push(selectedOption.dataset.description);
+                    if (selectedOption.dataset.language) details.push(selectedOption.dataset.language);
+                    previewDetailsEl.textContent = details.join(' • ');
+                }
+                if (previewAudioEl) previewAudioEl.src = selectedOption.dataset.audioPath;
+                
+                voicePreviewSection.style.display = 'block';
+            } else {
+                voicePreviewSection.style.display = 'none';
+            }
+        });
+        
+        // Show modal
+        modal.classList.add('show');
+        console.log('✅ Convert voice modal opened');
+        
+    } catch (error) {
+        console.error('Error opening convert voice modal:', error);
+        showToast('Failed to open voice conversion modal', 'error');
+    }
+}
+
+// Handle convert voice form submission
+async function handleConvertVoice(e) {
+    e.preventDefault();
+    
+    const podcastId = document.getElementById('convert-podcast-id').value;
+    const voiceId = document.getElementById('convert-voice-selection').value;
+    const submitBtn = document.getElementById('convert-voice-submit');
+    const progressSection = document.getElementById('conversion-progress');
+    const progressFill = document.getElementById('conversion-progress-fill');
+    const progressText = document.getElementById('conversion-progress-text');
+    
+    if (!voiceId) {
+        showToast('Please select a voice', 'error');
+        return;
+    }
+    
+    console.log('🎙️ Converting podcast voice:', { podcastId, voiceId });
+    
+    // Disable submit button and show progress
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting...';
+    }
+    
+    if (progressSection) {
+        progressSection.style.display = 'block';
+    }
+    
+    try {
+        // Simulate progress updates
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 10;
+            if (progress <= 90) {
+                if (progressFill) progressFill.style.width = `${progress}%`;
+                if (progressText) progressText.textContent = `Converting voice... ${progress}%`;
+            }
+        }, 500);
+        
+        // Make API call to convert voice
+        const response = await apiRequest(
+            `/api/podcasts/${podcastId}/convert-voice`,
+            'POST',
+            { customVoiceId: voiceId }
+        );
+        
+        clearInterval(progressInterval);
+        
+        if (response.success) {
+            // Complete progress
+            if (progressFill) progressFill.style.width = '100%';
+            if (progressText) progressText.textContent = 'Conversion complete!';
+            
+            showToast('Voice conversion started! The podcast will be updated when ready.', 'success');
+            
+            // Close modal after a short delay
+            setTimeout(() => {
+                const modal = document.getElementById('convert-voice-modal');
+                if (modal) {
+                    modal.classList.remove('show');
+                }
+                
+                // Reset form and progress
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-magic"></i> Convert Voice';
+                }
+                if (progressSection) {
+                    progressSection.style.display = 'none';
+                    if (progressFill) progressFill.style.width = '0%';
+                    if (progressText) progressText.textContent = 'Converting voice...';
+                }
+                
+                // Reload podcasts to show conversion status
+                loadPodcasts();
+            }, 2000);
+        } else {
+            throw new Error(response.message || 'Conversion failed');
+        }
+    } catch (error) {
+        console.error('Voice conversion error:', error);
+        showToast(error.message || 'Failed to convert voice', 'error');
+        
+        // Reset UI
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-magic"></i> Convert Voice';
+        }
+        if (progressSection) {
+            progressSection.style.display = 'none';
+            if (progressFill) progressFill.style.width = '0%';
+            if (progressText) progressText.textContent = 'Converting voice...';
+        }
+    }
+}
+
 // Monitor training progress
 const activeProgressMonitors = new Set();
 
@@ -2864,6 +3032,13 @@ function initVoiceCloning() {
     const editForm = document.getElementById('edit-voice-form');
     if (editForm) {
         editForm.addEventListener('submit', handleSaveEditedVoice);
+    }
+    
+    // Convert voice form
+    const convertForm = document.getElementById('convert-voice-form');
+    if (convertForm) {
+        convertForm.addEventListener('submit', handleConvertVoice);
+        console.log('✅ Convert voice form event listener attached');
     }
     
     // File input

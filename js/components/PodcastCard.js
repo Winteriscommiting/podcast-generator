@@ -100,6 +100,9 @@ class PodcastCard extends Component {
                         <i class="fas fa-play"></i> ${isBrowserTTS ? 'Play (Browser TTS)' : 'Play'}
                     </button>
                     ${!isBrowserTTS ? `
+                        <button class="btn btn-outline btn-sm convert-voice-btn" data-id="${podcast._id}">
+                            <i class="fas fa-microphone-alt"></i> Convert Voice
+                        </button>
                         <button class="btn btn-outline btn-sm download-btn" data-id="${podcast._id}" data-url="${playbackUrl}" data-title="${podcast.title}">
                             <i class="fas fa-download"></i> Download
                         </button>
@@ -131,6 +134,11 @@ class PodcastCard extends Component {
             const podcastId = e.currentTarget.getAttribute('data-id');
             const audioUrl = e.currentTarget.getAttribute('data-url');
             this.options.onPlay(podcastId, audioUrl);
+        });
+        
+        this.on('click', '.convert-voice-btn', (e) => {
+            const podcastId = e.currentTarget.getAttribute('data-id');
+            this.options.onConvertVoice(podcastId);
         });
         
         this.on('click', '.download-btn', (e) => {
