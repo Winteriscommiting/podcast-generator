@@ -2362,22 +2362,32 @@ function openUploadVoiceModal() {
     const modal = document.getElementById('upload-voice-modal');
     console.log('Modal found:', !!modal);
     if (modal) {
-        modal.classList.add('show'); // Changed from 'active' to 'show'
+        modal.classList.add('show');
         resetUploadVoiceForm();
         
-        // Scroll modal content to top and focus on voice name field
+        // Scroll modal content AND body to top, then focus on voice name field
         setTimeout(() => {
             const modalContent = modal.querySelector('.modal-content');
+            const modalBody = modal.querySelector('.modal-body');
+            
             if (modalContent) {
                 modalContent.scrollTop = 0;
+                console.log('✅ Scrolled modal-content to top');
+            }
+            
+            if (modalBody) {
+                modalBody.scrollTop = 0;
+                console.log('✅ Scrolled modal-body to top');
             }
             
             // Focus on the voice name input
             const voiceNameInput = document.getElementById('voice-name');
             if (voiceNameInput) {
                 voiceNameInput.focus();
+                voiceNameInput.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                console.log('✅ Focused on voice-name input');
             }
-        }, 100);
+        }, 200);
         
         console.log('✅ Modal opened and form reset');
     }
