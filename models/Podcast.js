@@ -68,6 +68,18 @@ const podcastSchema = new mongoose.Schema({
       default: 'default',
     },
   },
+  customVoice: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'CustomVoice',
+  },
+  convertedAudioUrl: {
+    type: String, // URL for voice-converted audio
+  },
+  conversionStatus: {
+    type: String,
+    enum: ['none', 'pending', 'processing', 'completed', 'failed'],
+    default: 'none',
+  },
   sourceType: {
     type: String,
     enum: ['full_document', 'summary'],

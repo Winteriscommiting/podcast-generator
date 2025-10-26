@@ -1521,6 +1521,9 @@ async function initPodcastModal(documentId = null, summaryId = null) {
             
             // Load available voices
             await loadAvailableVoices(voiceProvider.value);
+            
+            // Load custom voices for conversion
+            await loadCustomVoices();
         }
     } catch (error) {
         console.error('Error loading documents:', error);
@@ -1564,6 +1567,7 @@ async function initPodcastModal(documentId = null, summaryId = null) {
             const speed = parseFloat(voiceSpeed.value);
             const pitch = parseFloat(voicePitch.value);
             const volume = parseFloat(voiceVolume.value);
+            const customVoiceId = document.getElementById('custom-voice-selection')?.value || '';
             
             // Validation
             if (!selectedDocumentId) {
@@ -1593,7 +1597,8 @@ async function initPodcastModal(documentId = null, summaryId = null) {
                         speed,
                         pitch,
                         volume
-                    }
+                    },
+                    customVoiceId: customVoiceId || undefined
                 });
                 
                 if (response.success) {
@@ -1643,6 +1648,33 @@ async function initPodcastModal(documentId = null, summaryId = null) {
             }
         } catch (error) {
             console.error('Error loading voices:', error);
+        }
+    }
+    
+    // NEW: Load custom voices for conversion
+    async function loadCustomVoices() {
+        const customVoiceSelection = document.getElementById('custom-voice-selection');
+        if (!customVoiceSelection) return;
+        
+        try {
+            const response = await apiRequest('/api/custom-voices');
+            
+            if (response.success) {
+                // Clear existing options except the first "None" option
+                customVoiceSelection.innerHTML = '<option value="">None - Use original voice</option>';
+                
+                // Add custom voice options (only ready voices)
+                response.voices
+                    .filter(voice => voice.status === 'ready')
+                    .forEach(voice => {
+                        const option = document.createElement('option');
+                        option.value = voice._id;
+                        option.textContent = `${voice.name}${voice.gender ? ` (${voice.gender})` : ''}`;
+                        customVoiceSelection.appendChild(option);
+                    });
+            }
+        } catch (error) {
+            console.error('Error loading custom voices:', error);
         }
     }
 }

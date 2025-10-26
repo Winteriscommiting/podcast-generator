@@ -18,7 +18,8 @@ router.post('/', protect, async (req, res) => {
       description, 
       sourceType, 
       voiceProvider, 
-      voiceSettings 
+      voiceSettings,
+      customVoiceId // NEW: custom voice for conversion
     } = req.body;
     
     if (!documentId || !title || !sourceType || !voiceProvider || !voiceSettings) {
@@ -68,6 +69,7 @@ router.post('/', protect, async (req, res) => {
       sourceType,
       voiceProvider,
       voiceSettings: finalVoiceSettings,
+      customVoice: customVoiceId || undefined,
       processingStatus: 'processing',
     });
     
@@ -105,6 +107,13 @@ router.post('/', protect, async (req, res) => {
       podcast.storageType = audioResult.storageType;
       podcast.processingStatus = 'completed';
       await podcast.save();
+    }
+
+    // NEW: If custom voice is selected, trigger voice conversion in background
+    if (customVoiceId && podcast.audioUrl && podcast.audioUrl !== 'browser-tts') {
+      convertPodcastVoice(podcast._id, customVoiceId).catch(err => {
+        console.error(`Voice conversion failed for podcast ${podcast._id}:`, err);
+      });
     }
     
     res.status(201).json({
@@ -372,5 +381,97 @@ router.delete('/:id', protect, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// Helper function to convert podcast voice using trained custom voice
+async function convertPodcastVoice(podcastId, customVoiceId) {
+  const CustomVoice = require('../models/CustomVoice');
+  const FormData = require('form-data');
+  const axios = require('axios');
+  const fs = require('fs');
+  const path = require('path');
+  
+  try {
+    console.log(`🎙️ Starting voice conversion for podcast ${podcastId} with voice ${customVoiceId}`);
+    
+    const podcast = await Podcast.findById(podcastId);
+    const customVoice = await CustomVoice.findById(customVoiceId);
+    
+    if (!podcast || !customVoice) {
+      throw new Error('Podcast or custom voice not found');
+    }
+    
+    if (customVoice.status !== 'ready') {
+      throw new Error('Custom voice is not ready for use');
+    }
+    
+    // Update conversion status
+    podcast.conversionStatus = 'processing';
+    await podcast.save();
+    
+    // Get the original audio file
+    const audioPath = path.join(__dirname, '..', podcast.audioUrl);
+    
+    if (!fs.existsSync(audioPath)) {
+      throw new Error('Original audio file not found');
+    }
+    
+    // Prepare conversion request
+    const RVC_SERVICE_URL = process.env.RVC_SERVICE_URL || 'http://127.0.0.1:5000';
+    const formData = new FormData();
+    
+    formData.append('audio', fs.createReadStream(audioPath));
+    formData.append('model_id', customVoice._id.toString());
+    
+    if (customVoice.hfRepo) {
+      formData.append('hf_repo', customVoice.hfRepo);
+      if (customVoice.hfRevision) formData.append('hf_revision', customVoice.hfRevision);
+      if (customVoice.rvcBackend) formData.append('backend', customVoice.rvcBackend);
+    }
+    
+    // Call Python conversion service
+    const response = await axios.post(`${RVC_SERVICE_URL}/convert`, formData, {
+      headers: formData.getHeaders(),
+      responseType: 'stream',
+      timeout: 10 * 60 * 1000 // 10 minutes
+    });
+    
+    // Save converted audio
+    const convertedFileName = `converted_${Date.now()}_${path.basename(audioPath)}`;
+    const convertedPath = path.join(__dirname, '..', 'uploads', 'audio', convertedFileName);
+    const writeStream = fs.createWriteStream(convertedPath);
+    
+    response.data.pipe(writeStream);
+    
+    await new Promise((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
+    });
+    
+    // Update podcast with converted audio
+    podcast.convertedAudioUrl = `/uploads/audio/${convertedFileName}`;
+    podcast.conversionStatus = 'completed';
+    await podcast.save();
+    
+    // Increment voice usage
+    if (customVoice.incrementUsage) {
+      await customVoice.incrementUsage();
+    }
+    
+    console.log(`✅ Voice conversion completed for podcast ${podcastId}`);
+    
+  } catch (error) {
+    console.error(`❌ Voice conversion error for podcast ${podcastId}:`, error);
+    
+    try {
+      const podcast = await Podcast.findById(podcastId);
+      if (podcast) {
+        podcast.conversionStatus = 'failed';
+        await podcast.save();
+      }
+    } catch (updateError) {
+      console.error('Error updating podcast status:', updateError);
+    }
+  }
+}
 
 module.exports = router;
