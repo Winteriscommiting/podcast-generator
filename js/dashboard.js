@@ -2453,16 +2453,24 @@ async function handleVoiceUpload(e) {
         return;
     }
     
-    const name = document.getElementById('voice-name').value.trim();
-    const description = document.getElementById('voice-description').value.trim();
-    const gender = document.getElementById('voice-gender').value;
-    const language = document.getElementById('voice-language').value;
-    const accent = document.getElementById('voice-accent').value.trim();
-    const tags = document.getElementById('voice-tags').value.trim();
+    const nameInput = document.getElementById('voice-name');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const description = document.getElementById('voice-description')?.value.trim() || '';
+    const gender = document.getElementById('voice-gender')?.value || 'unknown';
+    const language = document.getElementById('voice-language')?.value || 'en-US';
+    const accent = document.getElementById('voice-accent')?.value.trim() || '';
+    const tags = document.getElementById('voice-tags')?.value.trim() || '';
+    
+    console.log('📝 Form values:', {
+        nameInput: nameInput,
+        nameValue: nameInput?.value,
+        nameTrimmed: name,
+        nameLength: name.length
+    });
     
     if (!name) {
         showToast('Please enter a voice name', 'error');
-        console.error('❌ No voice name');
+        console.error('❌ No voice name provided');
         return;
     }
     
@@ -2695,8 +2703,17 @@ function handlePlayVoice(voice) {
     // Audio playback is handled within the VoiceCloneCard component
 }
 
+// Flag to track if voice cloning has been initialized
+let voiceCloningInitialized = false;
+
 // Initialize voice cloning events
 function initVoiceCloning() {
+    // Prevent duplicate initialization
+    if (voiceCloningInitialized) {
+        console.log('⏭️ Voice cloning already initialized, skipping...');
+        return;
+    }
+    
     console.log('🎬 Initializing voice cloning module...');
     
     // Upload voice button
@@ -2775,6 +2792,8 @@ function initVoiceCloning() {
         });
     }
     
+    // Mark as initialized
+    voiceCloningInitialized = true;
     console.log('✅ Voice cloning initialized');
 }
 
