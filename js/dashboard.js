@@ -2454,8 +2454,10 @@ function handleVoiceFileSelect(file) {
 // Handle voice upload
 async function handleVoiceUpload(e) {
     e.preventDefault();
+    e.stopPropagation();
     
     console.log('🎤 Starting voice upload...');
+    console.log('Event:', e);
     console.log('Selected file:', selectedVoiceFile);
     
     if (!selectedVoiceFile) {
@@ -2465,6 +2467,10 @@ async function handleVoiceUpload(e) {
     }
     
     const nameInput = document.getElementById('voice-name');
+    console.log('🔍 Name input element:', nameInput);
+    console.log('🔍 Name input raw value:', nameInput?.value);
+    console.log('🔍 Name input value length:', nameInput?.value?.length);
+    
     const name = nameInput ? nameInput.value.trim() : '';
     const description = document.getElementById('voice-description')?.value.trim() || '';
     const gender = document.getElementById('voice-gender')?.value || 'unknown';
