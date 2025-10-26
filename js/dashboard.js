@@ -2453,6 +2453,7 @@ function handleVoiceFileSelect(file) {
 
 // Handle voice upload
 async function handleVoiceUpload(e) {
+    console.log('🚀 handleVoiceUpload FUNCTION CALLED!');
     e.preventDefault();
     e.stopPropagation();
     
@@ -2769,6 +2770,23 @@ function initVoiceCloning() {
     if (uploadForm) {
         uploadForm.addEventListener('submit', handleVoiceUpload);
         console.log('✅ Upload form event listener attached');
+    }
+    
+    // Also add click listener to submit button as backup
+    const submitBtn = document.getElementById('voice-upload-submit');
+    console.log('Submit button found:', !!submitBtn);
+    if (submitBtn) {
+        submitBtn.addEventListener('click', (e) => {
+            console.log('🖱️ Submit button clicked directly');
+            e.preventDefault();
+            
+            // Manually trigger form submission
+            if (uploadForm) {
+                const event = new Event('submit', { bubbles: true, cancelable: true });
+                uploadForm.dispatchEvent(event);
+            }
+        });
+        console.log('✅ Submit button click listener attached');
     }
     
     // Edit form
