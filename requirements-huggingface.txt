@@ -2,17 +2,17 @@
 # Install these for real voice conversion using pre-trained models
 # Command: pip install -r requirements-huggingface.txt
 
-# Core dependencies (Python 3.12 compatible)
-transformers==4.44.2
-torch==2.3.1
-torchaudio==2.3.1
-soundfile==0.12.1
+# Core dependencies
+transformers>=4.30.0
+torch>=2.0.0
+torchaudio>=2.0.0
+soundfile>=0.12.0
 
 # Audio processing
-librosa==0.10.2.post1
-scipy==1.11.4
-numpy==2.0.2
-huggingface_hub==0.24.6
+librosa>=0.10.0
+scipy>=1.10.0
+numpy>=1.24.0
+huggingface_hub>=0.23.0
 
 # Optional: For GPU support (choose based on your system)
 # For NVIDIA GPU with CUDA 11.8:
@@ -22,7 +22,8 @@ huggingface_hub==0.24.6
 # torch torchvision torchaudio
 
 # Voice synthesis/conversion (optional)
-# Coqui TTS for XTTS v2 zero-shot
-TTS==0.22.0
+# Coqui TTS for XTTS v2 zero-shot - Requires Python 3.9-3.11, not compatible with 3.12
+# TTS==0.22.0
 # Optional VC research libs if you extend built-in pipelines later
 # speechbrain==0.5.16
+# speechbrain>=0.5.0  # For voice conversion models
