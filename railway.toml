@@ -7,10 +7,10 @@ aptPkgs = []
 
 [build.nixpacksPlan.phases.install]
 commands = [
-  "pip3 install --upgrade pip setuptools wheel",
-  "pip3 install -r requirements.txt",
-  "pip3 install -r requirements-huggingface.txt",
-  "pip3 install -r requirements-xtts.txt || echo 'XTTS optional - continuing...'"
+  "pip3 install --user --upgrade pip setuptools wheel",
+  "pip3 install --user -r requirements.txt",
+  "pip3 install --user -r requirements-huggingface.txt",
+  "pip3 install --user -r requirements-xtts.txt || echo 'XTTS optional - continuing...'"
 ]
 
 [deploy]

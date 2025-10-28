@@ -3,10 +3,10 @@ nixPkgs = ["python311Full", "python311Packages.pip", "nodejs_20", "ffmpeg"]
 
 [phases.install]
 commands = [
-  "pip3 install --upgrade pip setuptools wheel",
-  "pip3 install -r requirements.txt",
-  "pip3 install -r requirements-huggingface.txt",
-  "pip3 install -r requirements-xtts.txt || echo 'XTTS optional - skipping'"
+  "pip3 install --user --upgrade pip setuptools wheel",
+  "pip3 install --user -r requirements.txt",
+  "pip3 install --user -r requirements-huggingface.txt",
+  "pip3 install --user -r requirements-xtts.txt || echo 'XTTS optional - skipping'"
 ]
 
 [phases.build]
