@@ -3,11 +3,14 @@ builder = "NIXPACKS"
 
 [build.nixpacksPlan.phases.setup]
 nixPkgs = ["python311", "nodejs_20", "ffmpeg"]
+aptPkgs = []
+
+[build.nixpacksPlan.phases.install]
 commands = [
-  "pip install --upgrade pip setuptools wheel",
-  "pip install -r requirements.txt",
-  "pip install -r requirements-huggingface.txt",
-  "pip install -r requirements-xtts.txt || echo 'XTTS optional - continuing...'"
+  "python3 -m pip install --upgrade pip setuptools wheel",
+  "python3 -m pip install -r requirements.txt",
+  "python3 -m pip install -r requirements-huggingface.txt",
+  "python3 -m pip install -r requirements-xtts.txt || echo 'XTTS optional - continuing...'"
 ]
 
 [deploy]
