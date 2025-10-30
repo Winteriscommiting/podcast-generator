@@ -140,31 +140,9 @@ node server.js
 
 ## 📊 How It Works
 
-```
-┌──────────────┐
-│ 1. Upload    │  User uploads voice sample (MP3/WAV)
-│   Voice      │  → Stored in MongoDB GridFS
-└──────┬───────┘  → Status: "uploaded"
-       │
-       ▼
-┌──────────────┐
-│ 2. Training  │  Node.js sends to Python RVC service
-│   Triggered  │  → Preprocessing (splits audio)
-└──────┬───────┘  → Feature extraction (Hubert model)
-       │          → Model training (10-30 min)
-       │          → Status: "processing"
-       ▼
-┌──────────────┐
-│ 3. Model     │  RVC trains custom voice model
-│   Training   │  → Saves .pth file (100-500MB)
-└──────┬───────┘  → Status: "ready"
-       │
-       ▼
-┌──────────────┐
-│ 4. Ready to  │  Voice can now be used for:
-│   Use        │  → Converting TTS to cloned voice
-└──────────────┘  → Generating podcasts
-                  → Any voice synthesis
+```text
+[1 Upload] → [2 Train] → [3 Model Ready] → [4 Convert]
+  (GridFS)     (Python)      (.pth)          (TTS → RVC)
 ```
 
 ## 🎤 Voice Upload Guidelines

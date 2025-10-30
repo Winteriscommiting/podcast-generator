@@ -117,30 +117,19 @@ npm run deploy:appengine
 ## 🎯 Architecture Overview
 
 ### Before (Local)
-```
-├── Your Computer
-│   ├── Node.js Server (localhost:3000)
-│   ├── Local MongoDB (localhost:27017)
-│   ├── Local Files (uploads/)
-│   └── Only accessible from your machine ❌
+```text
+[Your Computer]
+    ├─ [Node.js: localhost:3000]
+    ├─ [MongoDB: localhost:27017]
+    └─ [Files: uploads/]
 ```
 
 ### After (Cloud)
-```
-├── Google Cloud Run (serverless)
-│   └── Your App (https://your-app.run.app) ✅
-│
-├── MongoDB Atlas (cloud database)
-│   └── Your data (accessible globally) ✅
-│
-├── Google Cloud Storage (object storage)
-│   ├── Documents Bucket
-│   └── Audio Bucket ✅
-│
-└── Google Cloud AI Services
-    ├── Document AI (OCR)
-    ├── Vertex AI (Summarization)
-    └── Text-to-Speech (Audio Generation) ✅
+```text
+[Users] → [Cloud Run App]
+            ├─ [MongoDB Atlas]
+            ├─ [Cloud Storage: docs + audio]
+            └─ [Google Cloud AI: Doc AI • Vertex AI • TTS]
 ```
 
 ---

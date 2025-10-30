@@ -9,17 +9,10 @@
 
 ## Architecture Overview
 
-```
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   Browser   │─────▶│   Node.js    │─────▶│  Python RVC │
-│  (Upload)   │      │  (Backend)   │      │  (Training) │
-└─────────────┘      └──────────────┘      └─────────────┘
-                            │                      │
-                            ▼                      ▼
-                     ┌─────────────┐        ┌───────────┐
-                     │  MongoDB    │        │  Models   │
-                     │  GridFS     │        │  (.pth)   │
-                     └─────────────┘        └───────────┘
+```text
+[Browser] → [Node.js API] → [Python RVC]
+     ├─ [MongoDB]
+     └─ [Models (.pth)]
 ```
 
 ## Setup Steps

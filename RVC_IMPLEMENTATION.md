@@ -102,32 +102,9 @@ Improved voice card display:
 
 ### Complete Flow
 
-```
-1. User uploads voice sample
-   ├─> Browser sends file to Node.js
-   ├─> Node.js stores in MongoDB GridFS
-   ├─> Creates CustomVoice document (status: "uploaded")
-   └─> Triggers RVC training
-
-2. RVC Training (Background)
-   ├─> Node.js retrieves audio from GridFS
-   ├─> Sends audio to Python RVC service
-   ├─> Python preprocesses audio
-   ├─> Extracts features with Hubert
-   ├─> Trains RVC model (10-30 min)
-   ├─> Saves model as .pth file
-   └─> Returns success/failure
-
-3. Status Updates
-   ├─> Training starts: status = "processing"
-   ├─> Success: status = "ready", modelPath set
-   └─> Failure: status = "failed"
-
-4. Voice Conversion (Future)
-   ├─> Generate base TTS (Google/Azure)
-   ├─> Send to RVC with model ID
-   ├─> RVC converts to cloned voice
-   └─> Return to user
+```text
+[Upload] → [Train] → [Model Ready] → [Convert]
+  (GridFS)   (Python)     (.pth)        (TTS → RVC)
 ```
 
 ### File Structure
