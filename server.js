@@ -73,39 +73,50 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Database connection
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/podcast-generator', {
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/podcast-generator';
+
+    // In production, require MONGODB_URI to avoid hanging on localhost
+    if ((process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'prod') && !process.env.MONGODB_URI) {
+      console.warn('⚠️  MONGODB_URI is not set in production. Skipping DB connection and starting server without database.');
+      return;
+    }
+
+    const conn = await mongoose.connect(mongoUri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // fail fast if unreachable
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 20000,
     });
-    
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-    
+
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+
     // Handle connection events
     mongoose.connection.on('error', (err) => {
-      console.error('MongoDB connection error:', err);
+      console.error('MongoDB connection error:', err?.message || err);
     });
-    
+
     mongoose.connection.on('disconnected', () => {
       console.warn('MongoDB disconnected');
     });
-    
+
     mongoose.connection.on('reconnected', () => {
       console.log('MongoDB reconnected');
     });
-    
+
   } catch (error) {
-    console.error('Database connection failed:', error);
-    process.exit(1);
+    console.error('Database connection failed (non-fatal):', error?.message || error);
+    // Do not exit; allow the web server to start so health checks respond
   }
 };
 
 // Connect to database
 connectDB();
 
-// Initialize Google Cloud services (optional)
+// Initialize Google Cloud services (optional, non-blocking)
 console.log('\nInitializing Google Cloud services...');
-initializeDocumentAI();
-initializeVertexAI();
+try { initializeDocumentAI(); } catch (e) { console.warn('Document AI init failed:', e?.message || e); }
+try { initializeVertexAI(); } catch (e) { console.warn('Vertex AI init failed:', e?.message || e); }
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -198,6 +209,6 @@ app.get('/api/hf/training-progress/:voiceId', async (req, res) => {
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT} (env: ${process.env.NODE_ENV || 'development'})`);
 });
