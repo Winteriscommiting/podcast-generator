@@ -310,6 +310,22 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
+    // Attempt to remove trained model from RVC/HF service as well
+    try {
+      const deleteUrl = `${RVC_SERVICE_URL}/models/${voice._id.toString()}`;
+      await axios.delete(deleteUrl, { timeout: 5000 }).then((r) => {
+        if (r.data?.success) {
+          console.log(`🗑️  Deleted RVC model for voice ${voice.name} (${voice._id})`);
+        } else {
+          console.warn(`⚠️  RVC model delete responded without success for ${voice._id}`);
+        }
+      }).catch((err) => {
+        console.warn(`⚠️  Could not delete RVC model for ${voice._id}:`, err?.message || err);
+      });
+    } catch (err) {
+      console.warn('⚠️  Skipping RVC model cleanup (service unreachable):', err?.message || err);
+    }
+
     // Delete audio file from GridFS
     try {
       const GridFSBucket = mongoose.mongo.GridFSBucket;
