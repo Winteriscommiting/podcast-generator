@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const elevenLabs = require('../services/elevenLabs');
 const CustomVoice = require('../models/CustomVoice');
-const auth = require('../middleware/auth');
+const { protect: auth } = require('../middleware/auth');
 
 // Configure multer for voice sample uploads
 const storage = multer.diskStorage({
