@@ -1,34 +1,61 @@
 const express = require('express');
 const multer = require('multer');
-const { GridFsStorage } = require('multer-gridfs-storage');
+let GridFsStorage = null;
+try {
+    const GridFsStorageModule = require('multer-gridfs-storage');
+    GridFsStorage = GridFsStorageModule.GridFsStorage || GridFsStorageModule;
+} catch (error) {
+    console.warn('⚠️  multer-gridfs-storage not installed. Using disk storage for custom voices.');
+}
 const mongoose = require('mongoose');
 const { protect } = require('../middleware/auth');
 const CustomVoice = require('../models/CustomVoice');
 const FormData = require('form-data');
 const axios = require('axios');
 const stream = require('stream');
+const path = require('path');
+const fs = require('fs').promises;
 
 const router = express.Router();
 
 // RVC Service Configuration
 const RVC_SERVICE_URL = process.env.RVC_SERVICE_URL || 'http://localhost:5000';
-const HF_SERVICE_URL = process.env.HF_SERVICE_URL || process.env.RVC_SERVICE_URL || 'http://localhost:5000';
 
-// Configure GridFS storage for voice audio files
-const storage = new GridFsStorage({
-  db: mongoose.connection,
-  file: (req, file) => {
-    return {
-      filename: `voice_${Date.now()}_${file.originalname}`,
-      bucketName: 'uploads',
-      metadata: {
-        userId: req.user._id,
-        type: 'custom-voice',
-        originalName: file.originalname
-      }
-    };
-  }
-});
+// Configure GridFS storage for voice audio files (fallback to disk if not available)
+let storage;
+
+if (GridFsStorage) {
+    storage = new GridFsStorage({
+        db: mongoose.connection,
+        file: (req, file) => {
+            return {
+                filename: `voice_${Date.now()}_${file.originalname}`,
+                bucketName: 'uploads',
+                metadata: {
+                    userId: req.user._id,
+                    type: 'custom-voice',
+                    originalName: file.originalname
+                }
+            };
+        }
+    });
+} else {
+    // Fallback to disk storage
+    storage = multer.diskStorage({
+        destination: async (req, file, cb) => {
+            const dir = path.join(__dirname, '../uploads/custom-voices');
+            try {
+                await fs.mkdir(dir, { recursive: true });
+                cb(null, dir);
+            } catch (error) {
+                cb(error);
+            }
+        },
+        filename: (req, file, cb) => {
+            cb(null, `voice_${Date.now()}_${file.originalname}`);
+        }
+    });
+}
 
 // File filter for audio files only
 const fileFilter = (req, file, cb) => {
@@ -46,15 +73,6 @@ const upload = multer({
   fileFilter: fileFilter,
   limits: {
     fileSize: 50 * 1024 * 1024 // 50MB max
-  }
-});
-
-// Separate multer instance for conversion endpoint (do not persist input audio)
-const convertUpload = multer({
-  storage: multer.memoryStorage(),
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 50 * 1024 * 1024
   }
 });
 
@@ -310,22 +328,6 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    // Attempt to remove trained model from RVC/HF service as well
-    try {
-      const deleteUrl = `${RVC_SERVICE_URL}/models/${voice._id.toString()}`;
-      await axios.delete(deleteUrl, { timeout: 5000 }).then((r) => {
-        if (r.data?.success) {
-          console.log(`🗑️  Deleted RVC model for voice ${voice.name} (${voice._id})`);
-        } else {
-          console.warn(`⚠️  RVC model delete responded without success for ${voice._id}`);
-        }
-      }).catch((err) => {
-        console.warn(`⚠️  Could not delete RVC model for ${voice._id}:`, err?.message || err);
-      });
-    } catch (err) {
-      console.warn('⚠️  Skipping RVC model cleanup (service unreachable):', err?.message || err);
-    }
-
     // Delete audio file from GridFS
     try {
       const GridFSBucket = mongoose.mongo.GridFSBucket;
@@ -405,105 +407,6 @@ router.post('/:id/test', protect, async (req, res) => {
       message: 'Failed to test voice',
       error: error.message
     });
-  }
-});
-
-// @desc    Link a Hugging Face model repo to a voice
-// @route   PUT /api/custom-voices/:id/hf
-// @access  Private
-router.put('/:id/hf', protect, async (req, res) => {
-  try {
-    const { hfRepo, hfRevision, rvcBackend } = req.body || {};
-    if (!hfRepo) {
-      return res.status(400).json({ success: false, message: 'hfRepo is required (e.g., username/my-rvc-model)' });
-    }
-
-    const voice = await CustomVoice.findOne({ _id: req.params.id, user: req.user._id });
-    if (!voice) {
-      return res.status(404).json({ success: false, message: 'Voice not found' });
-    }
-
-    voice.hfRepo = hfRepo;
-    if (hfRevision) voice.hfRevision = hfRevision;
-    if (rvcBackend) voice.rvcBackend = rvcBackend;
-    voice.trainingProvider = 'huggingface';
-  // Linking a HF repo indicates a zero-shot or pre-trained model usage
-  voice.trainingMode = 'zero-shot';
-    voice.status = 'ready';
-    await voice.save();
-
-    return res.json({ success: true, voice });
-  } catch (error) {
-    console.error('Error linking HF repo:', error);
-    res.status(500).json({ success: false, message: 'Failed to link HF repo', error: error.message });
-  }
-});
-
-// @desc    Convert audio using HF-linked or local RVC model
-// @route   POST /api/custom-voices/:id/convert
-// @access  Private
-router.post('/:id/convert', protect, convertUpload.single('audio'), async (req, res) => {
-  try {
-    const voice = await CustomVoice.findOne({ _id: req.params.id, user: req.user._id });
-    if (!voice) {
-      return res.status(404).json({ success: false, message: 'Voice not found' });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Input audio file is required (field name: audio)' });
-    }
-
-    const useHF = voice.trainingProvider === 'huggingface' || voice.hfRepo;
-    const targetService = useHF ? HF_SERVICE_URL : RVC_SERVICE_URL;
-
-    const formData = new FormData();
-    formData.append('audio', req.file.buffer, {
-      filename: `input.${(req.file.mimetype || 'audio/wav').split('/')[1] || 'wav'}`,
-      contentType: req.file.mimetype || 'audio/wav'
-    });
-
-    if (useHF) {
-      formData.append('hf_repo', voice.hfRepo || '');
-      if (voice.hfRevision) formData.append('hf_revision', voice.hfRevision);
-      if (voice.rvcBackend) formData.append('backend', voice.rvcBackend);
-      formData.append('voice_id', String(voice._id));
-      // Current HF service expects a model_id (reference prepared during training)
-      formData.append('model_id', String(voice._id));
-    } else {
-      // Local/Mock RVC path
-      const modelId = voice.modelPath || String(voice._id);
-      formData.append('model_id', modelId);
-    }
-
-    // Optional params
-  const { pitch, strength, text, backend: backendOverride } = req.body || {};
-    if (pitch !== undefined) formData.append('pitch', String(pitch));
-    if (strength !== undefined) formData.append('strength', String(strength));
-  if (text !== undefined) formData.append('text', String(text));
-  if (backendOverride !== undefined) formData.append('backend', String(backendOverride));
-
-    const response = await axios.post(`${targetService}/convert`, formData, {
-      headers: { ...formData.getHeaders() },
-      responseType: 'stream',
-      timeout: 5 * 60 * 1000
-    });
-
-    // Pipe resulting audio stream back to client
-    res.setHeader('Content-Type', response.headers['content-type'] || 'audio/wav');
-    res.setHeader('Cache-Control', 'no-store');
-    response.data.pipe(res);
-    response.data.on('end', () => {
-      try { voice.incrementUsage && voice.incrementUsage(); } catch (_) {}
-    });
-    response.data.on('error', (err) => {
-      console.error('Error piping converted audio:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: 'Error streaming converted audio' });
-      }
-    });
-  } catch (error) {
-    console.error('Error converting audio:', error);
-    res.status(500).json({ success: false, message: 'Conversion failed', error: error.message });
   }
 });
 
