@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if user is logged in
     checkAuthStatus();
     
+    // Handle browser back/forward buttons
+    setupHistoryManagement();
+    
     // Login form
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
@@ -296,15 +299,12 @@ async function handleRegister(e) {
         });
         
         if (response.success) {
-            // Save token
-            localStorage.setItem('token', response.token);
-            
             // Show success message
-            showToast('Registration successful! Redirecting...', 'success');
+            showToast('Registration successful! Redirecting to login...', 'success');
             
-            // Redirect to dashboard
+            // Redirect to login page
             setTimeout(() => {
-                window.location.href = 'dashboard.html';
+                window.location.href = 'login.html';
             }, 1500);
         } else {
             showToast(response.message || 'Registration failed', 'error');
@@ -513,4 +513,46 @@ async function checkAuthStatus() {
             window.location.href = 'login.html';
         }
     }
+}
+// Setup browser history management
+function setupHistoryManagement() {
+    const currentPath = window.location.pathname;
+    const isLoginPage = currentPath.includes('login.html');
+    const isDashboard = currentPath.includes('dashboard.html') || currentPath === '/dashboard';
+    
+    // Add a state marker when user logs in successfully
+    if (isDashboard && localStorage.getItem('token')) {
+        // Mark this as an authenticated page load
+        if (!window.history.state || !window.history.state.authenticated) {
+            window.history.replaceState({ authenticated: true, page: 'dashboard' }, document.title);
+        }
+    } else if (isLoginPage) {
+        // Mark login page
+        if (!window.history.state || window.history.state.authenticated) {
+            window.history.replaceState({ authenticated: false, page: 'login' }, document.title);
+        }
+    }
+    
+    // Listen for back/forward button clicks
+    window.addEventListener('popstate', function(event) {
+        const token = localStorage.getItem('token');
+        const currentPath = window.location.pathname;
+        
+        // If user goes back and they were logged in, log them out
+        if (token) {
+            console.log('Browser back/forward detected while logged in - logging out');
+            localStorage.removeItem('token');
+            localStorage.removeItem('rememberMe');
+            
+            // Redirect to login without adding to history
+            window.location.replace('login.html');
+        }
+        
+        // Prevent auto-login when using forward button
+        // If we're on login page and there's no token, stay here
+        if (currentPath.includes('login.html') && !token) {
+            // Ensure we don't redirect to dashboard
+            return;
+        }
+    });
 }
