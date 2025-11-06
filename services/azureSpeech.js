@@ -1,4 +1,11 @@
-const sdk = require('microsoft-cognitiveservices-speech-sdk');
+let sdk = null;
+
+try {
+    sdk = require('microsoft-cognitiveservices-speech-sdk');
+} catch (error) {
+    console.warn('⚠️  Azure Speech SDK not installed. Azure TTS will not be available.');
+}
+
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
@@ -12,6 +19,11 @@ const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || 'eastus';
  * Check if Azure Speech is available
  */
 function isAzureSpeechAvailable() {
+    if (!sdk) {
+        console.log('⚠️  Azure Speech SDK not installed');
+        return false;
+    }
+    
     const available = !!(AZURE_SPEECH_KEY && AZURE_SPEECH_REGION);
     
     if (available) {
@@ -32,6 +44,10 @@ function isAzureSpeechAvailable() {
  * @returns {Promise<Object>} Audio file information
  */
 async function generateAzureAudio(text, settings = {}) {
+    if (!sdk) {
+        throw new Error('Azure Speech SDK not installed');
+    }
+    
     if (!isAzureSpeechAvailable()) {
         throw new Error('Azure Speech credentials not configured');
     }
