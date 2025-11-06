@@ -16,15 +16,14 @@ const ENV = {
       return 'http://localhost:3000';
     }
     
-    // If running on Netlify, use Railway backend
+    // If running on Netlify, use Render backend
     if (this.isNetlify) {
-      // IMPORTANT: Update this with YOUR Railway URL
-      return 'https://YOUR-RAILWAY-URL-HERE.up.railway.app';
+      return 'https://talkemon.onrender.com';
     }
     
-    // If running on GitHub Pages, use Railway backend
+    // If running on GitHub Pages, use Render backend
     if (this.isGitHubPages) {
-      return 'https://YOUR-RAILWAY-URL-HERE.up.railway.app';
+      return 'https://talkemon.onrender.com';
     }
     
     // Default: try same origin first
