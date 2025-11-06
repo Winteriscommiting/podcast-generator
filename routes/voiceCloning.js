@@ -28,21 +28,22 @@ const upload = multer({
     storage: storage,
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB per file
-        files: 25 // Max 25 files
+        files: 25 // Maximum 25 files
     },
     fileFilter: (req, file, cb) => {
-        // Accept audio files only
-        const allowedTypes = /mp3|wav|m4a|ogg|flac/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-
-        if (mimetype && extname) {
+        const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg', 'audio/flac', 'audio/x-m4a'];
+        const allowedExtensions = ['.mp3', '.wav', '.m4a', '.ogg', '.flac'];
+        
+        const hasValidType = allowedTypes.includes(file.mimetype);
+        const hasValidExtension = allowedExtensions.some(ext => file.originalname.toLowerCase().endsWith(ext));
+        
+        if (hasValidType || hasValidExtension) {
             return cb(null, true);
         } else {
             cb(new Error('Only audio files are allowed!'));
         }
     }
-});
+}).array('audioFiles', 25); // Changed from 'samples' to 'audioFiles' and made it a configured upload
 
 // Get all available voices (default + custom)
 router.get('/voices', auth, async (req, res) => {
@@ -84,7 +85,7 @@ router.get('/voices', auth, async (req, res) => {
 });
 
 // Clone a voice from audio samples
-router.post('/clone', auth, upload.array('samples', 25), async (req, res) => {
+router.post('/clone', auth, upload, async (req, res) => {
     try {
         const { name, description } = req.body;
         const audioFiles = req.files;
