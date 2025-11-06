@@ -1,13 +1,11 @@
 // API utility functions
 // Automatically use the correct base URL based on environment
-// Prefer window.APP_CONFIG.API_BASE_URL when provided (e.g., Netlify + external API)
-const API_BASE_URL = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL)
-    ? window.APP_CONFIG.API_BASE_URL.replace(/\/$/, '')
-    : window.location.origin;
+const API_BASE_URL = window.ENV ? window.ENV.getApiUrl() : window.location.origin;
 
 // Make API request
 async function apiRequest(endpoint, method = 'GET', data = null, token = null) {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const baseUrl = window.ENV ? window.ENV.getApiUrl() : API_BASE_URL;
+    const url = `${baseUrl}${endpoint}`;
     
     // If no token provided, try to get it from localStorage
     if (!token) {
@@ -69,10 +67,11 @@ async function uploadFile(file, token, onProgress = null) {
         token = getAuthToken();
     }
     
+    const baseUrl = window.ENV ? window.ENV.getApiUrl() : API_BASE_URL;
     const xhr = new XMLHttpRequest();
     
     return new Promise((resolve, reject) => {
-        xhr.open('POST', `${API_BASE_URL}/api/documents/upload`, true);
+        xhr.open('POST', `${baseUrl}/api/documents/upload`, true);
         xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         
         xhr.upload.onprogress = function(e) {
@@ -309,5 +308,3 @@ window.throttle = throttle;
 window.getFileIcon = getFileIcon;
 window.getStatusClass = getStatusClass;
 window.showToast = showToast;
-// expose base url helper
-window.getApiBaseUrl = () => API_BASE_URL;
