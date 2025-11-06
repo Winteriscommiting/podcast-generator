@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
 const { MongoClient } = require('mongodb');
 
@@ -30,6 +29,7 @@ exports.handler = async (event, context) => {
   const MONGODB_URI = process.env.MONGODB_URI;
 
   try {
+    // Use native fetch (available in Node 18+)
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
