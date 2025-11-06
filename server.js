@@ -137,7 +137,7 @@ app.use('/api/summaries', summaryRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/voices', voicesRoutes);
 app.use('/api/voices/custom', customVoicesRoutes);
-app.use('/api/voice-cloning', voiceCloningRoutes);
+app.use('/api/voiceCloning', voiceCloningRoutes);
 
 // Serve main pages
 app.get('/', (req, res) => {
