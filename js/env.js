@@ -16,16 +16,15 @@ const ENV = {
       return 'http://localhost:3000';
     }
     
-    // If running on Netlify, use Netlify Functions
+    // If running on Netlify, use Railway backend
     if (this.isNetlify) {
-      return window.location.origin; // Netlify Functions are on same domain
+      // IMPORTANT: Update this with YOUR Railway URL
+      return 'https://YOUR-RAILWAY-URL-HERE.up.railway.app';
     }
     
-    // If running on GitHub Pages, you MUST deploy backend separately
-    // Update this with your Railway/Render deployment URL
+    // If running on GitHub Pages, use Railway backend
     if (this.isGitHubPages) {
-      const DEPLOYED_BACKEND_URL = 'https://pod-app-zai-production.up.railway.app';
-      return DEPLOYED_BACKEND_URL;
+      return 'https://YOUR-RAILWAY-URL-HERE.up.railway.app';
     }
     
     // Default: try same origin first
