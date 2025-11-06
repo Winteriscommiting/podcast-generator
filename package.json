@@ -52,6 +52,7 @@
     "form-data": "^4.0.1",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.8.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.40.0",
     "mongodb": "^6.10.0",
     "mongoose": "^8.8.0",
     "multer": "^1.4.5-lts.1",
