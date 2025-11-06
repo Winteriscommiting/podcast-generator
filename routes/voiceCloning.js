@@ -90,6 +90,8 @@ router.post('/clone', auth, upload, async (req, res) => {
         const { name, description } = req.body;
         const audioFiles = req.files;
 
+        console.log('🎤 Voice cloning request:', { name, fileCount: audioFiles?.length });
+
         if (!name || !audioFiles || audioFiles.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -98,8 +100,10 @@ router.post('/clone', auth, upload, async (req, res) => {
         }
 
         // Clone voice with ElevenLabs
+        console.log('📤 Uploading to ElevenLabs...');
         const filePaths = audioFiles.map(file => file.path);
         const clonedVoice = await elevenLabs.cloneVoice(name, filePaths, description);
+        console.log('✅ ElevenLabs clone successful:', clonedVoice.voice_id);
 
         // Save to database
         const customVoice = new CustomVoice({
@@ -112,23 +116,37 @@ router.post('/clone', auth, upload, async (req, res) => {
         });
 
         await customVoice.save();
+        console.log('💾 Saved to database');
 
-        // Clean up uploaded files (optional - keep for reference)
-        // for (const filePath of filePaths) {
-        //     await fs.unlink(filePath).catch(console.error);
-        // }
+        // Clean up uploaded files after successful cloning
+        for (const filePath of filePaths) {
+            await fs.unlink(filePath).catch(err => console.error('Cleanup error:', err));
+        }
 
         res.json({
             success: true,
             message: 'Voice cloned successfully!',
-            voice: customVoice
+            voice: {
+                voiceId: customVoice.voiceId,
+                name: customVoice.name,
+                description: customVoice.description,
+                isCustom: true
+            }
         });
     } catch (error) {
-        console.error('Error cloning voice:', error);
+        console.error('❌ Error cloning voice:', error.response?.data || error.message);
+        
+        // Clean up files on error
+        if (req.files) {
+            for (const file of req.files) {
+                await fs.unlink(file.path).catch(() => {});
+            }
+        }
+        
         res.status(500).json({
             success: false,
             message: 'Error cloning voice',
-            error: error.message
+            error: error.response?.data?.detail?.message || error.message
         });
     }
 });

@@ -56,11 +56,13 @@ class ElevenLabsService {
                 formData.append('description', description);
             }
 
+            console.log(`📁 Adding ${audioFiles.length} audio files to FormData...`);
             // Add audio files
             for (const filePath of audioFiles) {
                 formData.append('files', fs.createReadStream(filePath));
             }
 
+            console.log('🌐 Sending request to ElevenLabs API...');
             const response = await axios.post(
                 `${this.baseURL}/voices/add`,
                 formData,
@@ -68,14 +70,35 @@ class ElevenLabsService {
                     headers: {
                         'xi-api-key': this.apiKey,
                         ...formData.getHeaders()
-                    }
+                    },
+                    timeout: 120000, // 2 minute timeout
+                    maxContentLength: Infinity,
+                    maxBodyLength: Infinity
                 }
             );
 
+            console.log('✅ ElevenLabs API response:', response.data);
             return response.data;
         } catch (error) {
-            console.error('Error cloning voice:', error.response?.data || error.message);
-            throw error;
+            console.error('❌ ElevenLabs API Error:', {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                message: error.message
+            });
+            
+            // Provide more detailed error messages
+            if (error.response?.status === 401) {
+                throw new Error('Invalid ElevenLabs API key. Please check your ELEVENLABS_API_KEY.');
+            } else if (error.response?.status === 429) {
+                throw new Error('ElevenLabs API rate limit exceeded. Please try again later.');
+            } else if (error.response?.data?.detail) {
+                throw new Error(error.response.data.detail.message || JSON.stringify(error.response.data.detail));
+            } else if (error.code === 'ECONNABORTED') {
+                throw new Error('Request timeout - ElevenLabs API took too long to respond.');
+            }
+            
+            throw new Error(error.response?.data?.message || error.message || 'Failed to clone voice');
         }
     }
 

@@ -373,17 +373,43 @@
             selectedFiles.forEach(file => formData.append('audioFiles', file));
 
             cloneBtn.disabled = true;
-            cloneBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cloning Voice...';
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 5;
+                if (progress <= 90) {
+                    cloneBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Cloning... ${progress}%`;
+                }
+            }, 1000);
 
             try {
+                // Add timeout to fetch request
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
                 const response = await fetch(`${window.ENV.getApiUrl()}/api/voiceCloning/clone`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-                    body: formData
+                    body: formData,
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
+                clearInterval(progressInterval);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMsg = 'Failed to clone voice';
+                    try {
+                        const data = JSON.parse(errorText);
+                        errorMsg = data.message || data.error || errorMsg;
+                    } catch (e) {
+                        errorMsg = errorText.substring(0, 100);
+                    }
+                    throw new Error(errorMsg);
+                }
+
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.message || 'Failed to clone voice');
+                if (!data.success) throw new Error(data.message || 'Failed to clone voice');
 
                 showAlert(`✅ Voice "${voiceName}" cloned successfully!`, 'success');
                 document.getElementById('voiceName').value = '';
@@ -393,7 +419,13 @@
                 renderFileList();
                 await loadVoices();
             } catch (error) {
-                showAlert(`❌ Error: ${error.message}`, 'error');
+                clearInterval(progressInterval);
+                if (error.name === 'AbortError') {
+                    showAlert(`❌ Request timed out. Voice cloning takes 30s-2min. Please check if voice was created and try again if needed.`, 'error');
+                } else {
+                    showAlert(`❌ Error: ${error.message}`, 'error');
+                }
+                console.error('Clone voice error:', error);
             } finally {
                 cloneBtn.disabled = false;
                 cloneBtn.innerHTML = '<i class="fas fa-clone"></i> Clone Voice';
