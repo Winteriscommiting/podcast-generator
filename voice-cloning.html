@@ -6,6 +6,106 @@
     <title>Voice Cloning - Podcast Generator</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Voice Card Styles */
+        .voice-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid #e0e0e0;
+        }
+        .voice-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        .voice-card-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .voice-card-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+        .voice-card-info {
+            flex: 1;
+        }
+        .voice-card-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+        .voice-card-body {
+            padding: 20px;
+            min-height: 60px;
+        }
+        .voice-card-description {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .voice-card-footer {
+            padding: 16px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-success {
+            background: rgba(46, 213, 115, 0.2);
+            color: #27ae60;
+        }
+        .badge-info {
+            background: rgba(52, 152, 219, 0.2);
+            color: #2980b9;
+        }
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .empty-state h3 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            color: #2c3e50;
+        }
+        .empty-state p {
+            margin: 0 0 16px 0;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        #voicesGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -264,8 +364,8 @@
             const voiceDescription = document.getElementById('voiceDescription').value.trim();
             const cloneBtn = document.getElementById('cloneBtn');
 
-            if (!voiceName) return showAlert('Please enter a voice name', 'error');
-            if (selectedFiles.length === 0) return showAlert('Please upload at least one audio file', 'error');
+            if (!voiceName) return showAlert('❌ Please enter a voice name', 'error');
+            if (selectedFiles.length === 0) return showAlert('❌ Please upload at least one audio file', 'error');
 
             const formData = new FormData();
             formData.append('name', voiceName);
@@ -273,10 +373,10 @@
             selectedFiles.forEach(file => formData.append('audioFiles', file));
 
             cloneBtn.disabled = true;
-            cloneBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cloning...';
+            cloneBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cloning Voice...';
 
             try {
-                const response = await fetch(`${window.ENV.getApiUrl()}/api/voice-cloning/clone`, {
+                const response = await fetch(`${window.ENV.getApiUrl()}/api/voiceCloning/clone`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                     body: formData
@@ -302,20 +402,30 @@
 
         async function loadVoices() {
             try {
-                const response = await fetch(`${window.ENV.getApiUrl()}/api/voice-cloning/voices`, {
+                const response = await fetch(`${window.ENV.getApiUrl()}/api/voiceCloning/voices`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load voices (${response.status})`);
+                }
+                
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.message);
+                if (!data.success) throw new Error(data.message || 'Failed to load voices');
 
                 allVoices = data.voices || [];
                 renderVoices();
                 updateVoiceSelect();
             } catch (error) {
+                console.error('Error loading custom voices:', error);
                 document.getElementById('voicesGrid').innerHTML = `
                     <div class="empty-state">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 64px; color: #e74c3c;"></i>
-                        <p>Error loading voices: ${error.message}</p>
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #e74c3c; margin-bottom: 16px;"></i>
+                        <h3 style="margin-bottom: 8px;">Failed to Load Voices</h3>
+                        <p style="color: #7f8c8d;">${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadVoices()" style="margin-top: 16px;">
+                            <i class="fas fa-sync"></i> Retry
+                        </button>
                     </div>`;
             }
         }
@@ -332,21 +442,26 @@
             }
 
             grid.innerHTML = allVoices.map(voice => `
-                <div class="card">
-                    <div class="card-header">
-                        <h3>${voice.name}</h3>
-                        ${voice.isCustom ? '<span class="badge badge-success">CUSTOM</span>' : '<span class="badge badge-info">ELEVENLABS</span>'}
+                <div class="voice-card">
+                    <div class="voice-card-header">
+                        <div class="voice-card-icon">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                        <div class="voice-card-info">
+                            <h3 class="voice-card-title">${voice.name}</h3>
+                            ${voice.isCustom ? '<span class="badge badge-success"><i class="fas fa-user"></i> Custom</span>' : '<span class="badge badge-info"><i class="fas fa-globe"></i> ElevenLabs</span>'}
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <p>${voice.description || 'No description'}</p>
+                    <div class="voice-card-body">
+                        <p class="voice-card-description">${voice.description || 'No description available'}</p>
                     </div>
-                    <div class="card-footer">
-                        <button class="btn btn-sm btn-primary" onclick="selectVoice('${voice.voiceId}')">
-                            <i class="fas fa-check"></i> Use This Voice
+                    <div class="voice-card-footer">
+                        <button class="btn btn-sm btn-primary" onclick="selectVoice('${voice.voiceId}', '${voice.name}')">
+                            <i class="fas fa-check"></i> Select
                         </button>
                         ${voice.isCustom ? `
                             <button class="btn btn-sm btn-danger" onclick="deleteVoice('${voice.voiceId}', '${voice.name}')">
-                                <i class="fas fa-trash"></i>
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         ` : ''}
                     </div>
@@ -364,22 +479,27 @@
             `;
         }
 
-        function selectVoice(voiceId) {
+        function selectVoice(voiceId, voiceName) {
             document.getElementById('selectedVoice').value = voiceId;
             document.getElementById('textToSpeak').focus();
-            showAlert('Voice selected! Enter text to generate speech.', 'info');
+            showAlert(`✅ Voice "${voiceName}" selected! Enter text to generate speech.`, 'success');
         }
 
         async function deleteVoice(voiceId, voiceName) {
-            if (!confirm(`Delete "${voiceName}"?`)) return;
+            if (!confirm(`Are you sure you want to delete "${voiceName}"? This action cannot be undone.`)) return;
 
             try {
-                const response = await fetch(`${window.ENV.getApiUrl()}/api/voice-cloning/voices/${voiceId}`, {
+                const response = await fetch(`${window.ENV.getApiUrl()}/api/voiceCloning/voices/${voiceId}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to delete voice (${response.status})`);
+                }
+                
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.message);
+                if (!data.success) throw new Error(data.message || 'Failed to delete voice');
 
                 showAlert(`✅ Voice "${voiceName}" deleted!`, 'success');
                 await loadVoices();
@@ -394,15 +514,15 @@
             const generateBtn = document.getElementById('generateBtn');
             const audioResult = document.getElementById('audioResult');
 
-            if (!voiceId) return showAlert('Please select a voice', 'error');
-            if (!text) return showAlert('Please enter text to speak', 'error');
+            if (!voiceId) return showAlert('❌ Please select a voice first', 'error');
+            if (!text) return showAlert('❌ Please enter text to speak', 'error');
 
             generateBtn.disabled = true;
-            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Speech...';
             audioResult.style.display = 'none';
 
             try {
-                const response = await fetch(`${window.ENV.getApiUrl()}/api/voice-cloning/generate`, {
+                const response = await fetch(`${window.ENV.getApiUrl()}/api/voiceCloning/generate`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -411,7 +531,10 @@
                     body: JSON.stringify({ text, voiceId })
                 });
 
-                if (!response.ok) throw new Error('Failed to generate speech');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || `Failed to generate speech (${response.status})`);
+                }
 
                 const audioBlob = await response.blob();
                 const audioUrl = URL.createObjectURL(audioBlob);
