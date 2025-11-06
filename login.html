@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Talkemon-An podcast AI</title>
+    <title>Login - Podcast Generator</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -11,10 +11,9 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                            <div class="logo">
-                <div class="logo-icon">
+                <div class="logo">
                     <i class="fas fa-podcast"></i>
-                    <span>Talkemon-An podcast AI</span>
+                    <span>Podcast Generator</span>
                 </div>
                 <h1 class="auth-title">Welcome Back</h1>
                 <p class="auth-subtitle">Sign in to your account to continue</p>
@@ -58,13 +57,13 @@
 
                 <button type="submit" class="btn btn-primary btn-full" id="login-btn">
                     <span class="btn-text">Sign In</span>
-                    <div class="btn-spinner" style="display: none;">
+                    <div class="btn-spinner hidden">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
                 </button>
             </form>
 
-            <form class="auth-form" id="register-form" style="display: none;">
+            <form class="auth-form hidden" id="register-form">
                 <div class="form-group">
                     <label for="register-name">Name</label>
                     <div class="input-group">
@@ -117,7 +116,7 @@
 
                 <button type="submit" class="btn btn-primary btn-full" id="register-btn">
                     <span class="btn-text">Create Account</span>
-                    <div class="btn-spinner" style="display: none;">
+                    <div class="btn-spinner hidden">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
                 </button>
