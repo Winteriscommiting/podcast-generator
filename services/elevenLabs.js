@@ -6,12 +6,21 @@ class ElevenLabsService {
     constructor() {
         this.apiKey = process.env.ELEVENLABS_API_KEY;
         this.baseURL = 'https://api.elevenlabs.io/v1';
+        
+        if (!this.apiKey) {
+            console.warn('⚠️  ELEVENLABS_API_KEY not set. Voice cloning features disabled.');
+        }
     }
 
     /**
      * Get all available voices
      */
     async getVoices() {
+        if (!this.apiKey) {
+            console.warn('⚠️  ElevenLabs API key not configured');
+            return [];
+        }
+
         try {
             const response = await axios.get(`${this.baseURL}/voices`, {
                 headers: {
@@ -21,7 +30,7 @@ class ElevenLabsService {
             return response.data.voices;
         } catch (error) {
             console.error('Error fetching voices:', error.response?.data || error.message);
-            throw error;
+            return [];
         }
     }
 
@@ -32,6 +41,10 @@ class ElevenLabsService {
      * @param {string} description - Optional description
      */
     async cloneVoice(name, audioFiles, description = '') {
+        if (!this.apiKey) {
+            throw new Error('ElevenLabs API key not configured. Please add ELEVENLABS_API_KEY to environment variables.');
+        }
+
         try {
             const formData = new FormData();
             formData.append('name', name);
@@ -70,6 +83,10 @@ class ElevenLabsService {
      * @param {string} outputPath - Path to save audio file
      */
     async textToSpeech(text, voiceId, outputPath) {
+        if (!this.apiKey) {
+            throw new Error('ElevenLabs API key not configured');
+        }
+
         try {
             const response = await axios.post(
                 `${this.baseURL}/text-to-speech/${voiceId}`,
@@ -108,6 +125,10 @@ class ElevenLabsService {
      * @param {string} voiceId - Voice ID to delete
      */
     async deleteVoice(voiceId) {
+        if (!this.apiKey) {
+            throw new Error('ElevenLabs API key not configured');
+        }
+
         try {
             await axios.delete(`${this.baseURL}/voices/${voiceId}`, {
                 headers: {
@@ -126,6 +147,10 @@ class ElevenLabsService {
      * @param {string} voiceId - Voice ID
      */
     async getVoiceDetails(voiceId) {
+        if (!this.apiKey) {
+            throw new Error('ElevenLabs API key not configured');
+        }
+
         try {
             const response = await axios.get(`${this.baseURL}/voices/${voiceId}`, {
                 headers: {

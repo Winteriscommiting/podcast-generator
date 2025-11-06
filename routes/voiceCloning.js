@@ -47,18 +47,31 @@ const upload = multer({
 // Get all available voices (default + custom)
 router.get('/voices', auth, async (req, res) => {
     try {
-        // Get ElevenLabs voices
+        // Get ElevenLabs voices (returns empty array if API key not set)
         const elevenLabsVoices = await elevenLabs.getVoices();
         
         // Get user's custom voices from database
         const customVoices = await CustomVoice.find({ userId: req.user.id });
 
+        // Format voices for frontend
+        const allVoices = [
+            ...elevenLabsVoices.map(v => ({
+                voiceId: v.voice_id,
+                name: v.name,
+                description: v.description || '',
+                isCustom: false
+            })),
+            ...customVoices.map(v => ({
+                voiceId: v.voiceId,
+                name: v.name,
+                description: v.description || '',
+                isCustom: true
+            }))
+        ];
+
         res.json({
             success: true,
-            voices: {
-                elevenLabs: elevenLabsVoices,
-                custom: customVoices
-            }
+            voices: allVoices
         });
     } catch (error) {
         console.error('Error fetching voices:', error);
