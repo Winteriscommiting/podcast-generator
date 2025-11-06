@@ -65,8 +65,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Check for token in URL (from OAuth callback)
+function checkOAuthCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const error = urlParams.get('error');
+    
+    if (token) {
+        // Save token FIRST
+        localStorage.setItem('token', token);
+        
+        // Clean URL without reloading
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        
+        // Show success message
+        showToast('Login successful!', 'success');
+        
+        // Return true to indicate token was found and saved
+        return true;
+    } else if (error) {
+        showToast('Authentication failed. Please try again.', 'error');
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Redirect to login
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 2000);
+        return false;
+    }
+    
+    return false;
+}
+
 // Check authentication status
 async function checkAuthStatus() {
+    // First check if we're returning from OAuth callback
+    const currentPath = window.location.pathname;
+    if (currentPath === '/dashboard.html' || currentPath.includes('dashboard')) {
+        const hasTokenFromOAuth = checkOAuthCallback();
+        if (hasTokenFromOAuth) {
+            // Token was just saved from OAuth, skip verification for now
+            // Just update UI and stay on dashboard
+            return;
+        }
+    }
+    
     const token = localStorage.getItem('token');
     
     if (!token) {
@@ -390,17 +436,17 @@ function checkOAuthCallback() {
     const error = urlParams.get('error');
     
     if (token) {
-        // Save token
+        // Save token FIRST
         localStorage.setItem('token', token);
-        
-        // Show success message
-        showToast('Login successful!', 'success');
         
         // Clean URL without reloading
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
         
-        // Don't reload - let the page initialize with the token
+        // Show success message
+        showToast('Login successful!', 'success');
+        
+        // Return true to indicate token was found and saved
         return true;
     } else if (error) {
         showToast('Authentication failed. Please try again.', 'error');
@@ -410,7 +456,7 @@ function checkOAuthCallback() {
         
         // Redirect to login
         setTimeout(() => {
-            window.location.href = '/login';
+            window.location.href = '/login.html';
         }, 2000);
         return false;
     }
@@ -418,8 +464,53 @@ function checkOAuthCallback() {
     return false;
 }
 
-// Call checkOAuthCallback on page load if we're on dashboard
-const currentPath = window.location.pathname;
-if (currentPath === '/dashboard' || currentPath.includes('dashboard')) {
-    checkOAuthCallback();
+// Check authentication status
+async function checkAuthStatus() {
+    // First check if we're returning from OAuth callback
+    const currentPath = window.location.pathname;
+    if (currentPath === '/dashboard.html' || currentPath.includes('dashboard')) {
+        const hasTokenFromOAuth = checkOAuthCallback();
+        if (hasTokenFromOAuth) {
+            // Token was just saved from OAuth, skip verification for now
+            // The page will verify on next load
+            return;
+        }
+    }
+    
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+        // Not logged in, redirect to login page if not already there
+        if (!window.location.pathname.includes('login.html')) {
+            window.location.href = 'login.html';
+        }
+        return;
+    }
+    
+    try {
+        // Verify token with server
+        const response = await apiRequest('/api/auth/verify', 'GET', null, token);
+        
+        if (response.success) {
+            // Token is valid, update user info
+            updateUserInfo(response.user);
+            
+            // If on login page, redirect to dashboard
+            if (window.location.pathname.includes('login.html')) {
+                window.location.href = 'dashboard.html';
+            }
+        } else {
+            // Token is invalid, remove it and redirect to login
+            localStorage.removeItem('token');
+            if (!window.location.pathname.includes('login.html')) {
+                window.location.href = 'login.html';
+            }
+        }
+    } catch (error) {
+        console.error('Error verifying token:', error);
+        localStorage.removeItem('token');
+        if (!window.location.pathname.includes('login.html')) {
+            window.location.href = 'login.html';
+        }
+    }
 }
