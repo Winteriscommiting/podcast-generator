@@ -7,8 +7,11 @@ class ElevenLabsService {
         this.apiKey = process.env.ELEVENLABS_API_KEY;
         this.baseURL = 'https://api.elevenlabs.io/v1';
         
-        if (!this.apiKey) {
-            console.warn('⚠️  ELEVENLABS_API_KEY not set. Voice cloning features disabled.');
+        // Check if API key is a placeholder or missing
+        if (!this.apiKey || this.apiKey === 'YOUR_API_KEY_HERE' || this.apiKey.length < 10) {
+            console.warn('⚠️  ELEVENLABS_API_KEY not configured properly. Voice cloning features disabled.');
+            console.warn('⚠️  Get your API key from: https://elevenlabs.io/app/settings/api-keys');
+            this.apiKey = null; // Set to null to ensure checks work properly
         }
     }
 
@@ -42,7 +45,7 @@ class ElevenLabsService {
      */
     async cloneVoice(name, audioFiles, description = '') {
         if (!this.apiKey) {
-            throw new Error('ElevenLabs API key not configured. Please add ELEVENLABS_API_KEY to environment variables.');
+            throw new Error('ElevenLabs API key not configured. Please sign up at https://elevenlabs.io and add your API key to ELEVENLABS_API_KEY environment variable.');
         }
 
         try {
