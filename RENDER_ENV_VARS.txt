@@ -1,0 +1,37 @@
+================================================================
+COPY THESE TO RENDER.COM ENVIRONMENT VARIABLES
+================================================================
+
+1. Go to your Render dashboard
+2. Click on your web service
+3. Go to "Environment" tab
+4. Click "Add Environment Variable"
+5. Copy-paste each variable below:
+
+----------------------------------------------------------------
+
+MONGODB_URI
+mongodb+srv://podcast-user:SecurePass123@podcast-app-cluster.lcsqxxf.mongodb.net/podcast-generator?retryWrites=true&w=majority&appName=podcast-app-cluster
+
+GOOGLE_CLIENT_ID
+36957544811-vih1f3mci194kkidt1ksplst6fqfvfk6.apps.googleusercontent.com
+
+GOOGLE_CLIENT_SECRET
+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
+
+JWT_SECRET
+podcast-2024-jwt-S3cUr3-K3y-R@nd0m-P0dc@stG3n-X9pQ2mK8vL4wN6tB5yH3jF7cR1dE0aZ
+
+SESSION_SECRET
+podcast-session-secret-2024
+
+NODE_ENV
+production
+
+GOOGLE_CALLBACK_URL
+[WAIT - Add this AFTER deployment with your Render URL]
+https://YOUR-RENDER-URL.onrender.com/api/auth/google/callback
+
+================================================================
+⏱️ TIME ESTIMATE: 2 minutes to add these variables
+================================================================
