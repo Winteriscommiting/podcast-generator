@@ -18,8 +18,7 @@ router.post('/', protect, async (req, res) => {
       description, 
       sourceType, 
       voiceProvider, 
-      voiceSettings,
-      customVoiceId // NEW: custom voice for conversion
+      voiceSettings 
     } = req.body;
     
     if (!documentId || !title || !sourceType || !voiceProvider || !voiceSettings) {
@@ -69,7 +68,6 @@ router.post('/', protect, async (req, res) => {
       sourceType,
       voiceProvider,
       voiceSettings: finalVoiceSettings,
-      customVoice: customVoiceId || undefined,
       processingStatus: 'processing',
     });
     
@@ -107,17 +105,6 @@ router.post('/', protect, async (req, res) => {
       podcast.storageType = audioResult.storageType;
       podcast.processingStatus = 'completed';
       await podcast.save();
-    }
-
-    // NEW: If custom voice is selected, trigger voice conversion in background
-    if (customVoiceId && podcast.audioUrl && podcast.audioUrl !== 'browser-tts') {
-      console.log(`🎤 Custom voice requested: ${customVoiceId} for podcast: ${podcast._id}`);
-      console.log(`   Original audio URL: ${podcast.audioUrl}`);
-      convertPodcastVoice(podcast._id, customVoiceId).catch(err => {
-        console.error(`❌ Voice conversion failed for podcast ${podcast._id}:`, err);
-      });
-    } else if (customVoiceId) {
-      console.log(`⚠️  Custom voice ${customVoiceId} not applied - audioUrl: ${podcast.audioUrl}`);
     }
     
     res.status(201).json({
@@ -305,7 +292,7 @@ router.get('/:id', protect, async (req, res) => {
 // @access  Private
 router.get('/:id/download', protect, async (req, res) => {
   try {
-    const podcast = await Podcast.findById(req.params.id);
+    const podcast = await Podcast.findById(req.params.id).populate('document');
     
     if (!podcast) {
       return res.status(404).json({ success: false, message: 'Podcast not found' });
@@ -314,6 +301,11 @@ router.get('/:id/download', protect, async (req, res) => {
     // Make sure user owns the podcast
     if (podcast.user.toString() !== req.user.id) {
       return res.status(401).json({ success: false, message: 'Not authorized to download this podcast' });
+    }
+    
+    // Check if this is browser TTS (cannot be downloaded)
+    if (podcast.storageType === 'browser' || podcast.audioUrl === 'browser-tts') {
+      return res.status(400).json({ success: false, message: 'Browser TTS podcasts cannot be downloaded' });
     }
     
     const path = require('path');
@@ -344,10 +336,22 @@ router.get('/:id/download', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Audio file not found on server' });
     }
     
+    // Get document name for better filename
+    let downloadFilename = 'podcast.mp3';
+    if (podcast.document && podcast.document.originalName) {
+      // Use document name without extension
+      const docNameWithoutExt = podcast.document.originalName.replace(/\.[^/.]+$/, '');
+      downloadFilename = `${docNameWithoutExt}.mp3`;
+    } else if (podcast.title) {
+      // Fallback to podcast title
+      const safeTitle = podcast.title.replace(/[^a-z0-9]/gi, '_');
+      downloadFilename = `${safeTitle}.mp3`;
+    }
+    
     // Set headers for download
-    const safeTitle = podcast.title.replace(/[^a-z0-9]/gi, '_');
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}.mp3"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+    res.setHeader('Content-Length', fs.statSync(filePath).size);
     
     // Stream the file
     const fileStream = fs.createReadStream(filePath);
@@ -385,135 +389,5 @@ router.delete('/:id', protect, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-// Convert podcast voice with custom voice
-router.post('/:id/convert-voice', protect, async (req, res) => {
-  try {
-    const podcast = await Podcast.findById(req.params.id);
-    
-    if (!podcast) {
-      return res.status(404).json({ success: false, message: 'Podcast not found' });
-    }
-    
-    // Make sure user owns the podcast
-    if (podcast.user.toString() !== req.user.id) {
-      return res.status(401).json({ success: false, message: 'Not authorized to convert this podcast' });
-    }
-    
-    const { customVoiceId } = req.body;
-    
-    if (!customVoiceId) {
-      return res.status(400).json({ success: false, message: 'Custom voice ID is required' });
-    }
-    
-    console.log(`🎤 Voice conversion requested for podcast ${podcast._id} with voice ${customVoiceId}`);
-    
-    // Start conversion in background
-    convertPodcastVoice(podcast._id, customVoiceId).catch(err => {
-      console.error('❌ Voice conversion failed:', err);
-    });
-    
-    res.status(200).json({
-      success: true,
-      message: 'Voice conversion started',
-      podcast: podcast
-    });
-  } catch (error) {
-    console.error('Convert voice error:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Helper function to convert podcast voice using trained custom voice
-async function convertPodcastVoice(podcastId, customVoiceId) {
-  const CustomVoice = require('../models/CustomVoice');
-  const FormData = require('form-data');
-  const axios = require('axios');
-  const fs = require('fs');
-  const path = require('path');
-  
-  try {
-    console.log(`🎙️ Starting voice conversion for podcast ${podcastId} with voice ${customVoiceId}`);
-    
-    const podcast = await Podcast.findById(podcastId);
-    const customVoice = await CustomVoice.findById(customVoiceId);
-    
-    if (!podcast || !customVoice) {
-      throw new Error('Podcast or custom voice not found');
-    }
-    
-    if (customVoice.status !== 'ready') {
-      throw new Error('Custom voice is not ready for use');
-    }
-    
-    // Update conversion status
-    podcast.conversionStatus = 'processing';
-    await podcast.save();
-    
-    // Get the original audio file
-    const audioPath = path.join(__dirname, '..', podcast.audioUrl);
-    
-    if (!fs.existsSync(audioPath)) {
-      throw new Error('Original audio file not found');
-    }
-    
-    // Prepare conversion request
-    const RVC_SERVICE_URL = process.env.RVC_SERVICE_URL || 'http://127.0.0.1:5000';
-    const formData = new FormData();
-    
-    formData.append('audio', fs.createReadStream(audioPath));
-    formData.append('model_id', customVoice._id.toString());
-    
-    if (customVoice.hfRepo) {
-      formData.append('hf_repo', customVoice.hfRepo);
-      if (customVoice.hfRevision) formData.append('hf_revision', customVoice.hfRevision);
-      if (customVoice.rvcBackend) formData.append('backend', customVoice.rvcBackend);
-    }
-    
-    // Call Python conversion service
-    const response = await axios.post(`${RVC_SERVICE_URL}/convert`, formData, {
-      headers: formData.getHeaders(),
-      responseType: 'stream',
-      timeout: 10 * 60 * 1000 // 10 minutes
-    });
-    
-    // Save converted audio
-    const convertedFileName = `converted_${Date.now()}_${path.basename(audioPath)}`;
-    const convertedPath = path.join(__dirname, '..', 'uploads', 'audio', convertedFileName);
-    const writeStream = fs.createWriteStream(convertedPath);
-    
-    response.data.pipe(writeStream);
-    
-    await new Promise((resolve, reject) => {
-      writeStream.on('finish', resolve);
-      writeStream.on('error', reject);
-    });
-    
-    // Update podcast with converted audio
-    podcast.convertedAudioUrl = `/uploads/audio/${convertedFileName}`;
-    podcast.conversionStatus = 'completed';
-    await podcast.save();
-    
-    // Increment voice usage
-    if (customVoice.incrementUsage) {
-      await customVoice.incrementUsage();
-    }
-    
-    console.log(`✅ Voice conversion completed for podcast ${podcastId}`);
-    
-  } catch (error) {
-    console.error(`❌ Voice conversion error for podcast ${podcastId}:`, error);
-    
-    try {
-      const podcast = await Podcast.findById(podcastId);
-      if (podcast) {
-        podcast.conversionStatus = 'failed';
-        await podcast.save();
-      }
-    } catch (updateError) {
-      console.error('Error updating podcast status:', updateError);
-    }
-  }
-}
 
 module.exports = router;

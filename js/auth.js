@@ -347,13 +347,13 @@ function switchTab(tab) {
     if (tab === 'login') {
         loginTab.classList.add('active');
         registerTab.classList.remove('active');
-        loginForm.style.display = 'block';
-        registerForm.style.display = 'none';
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
     } else {
         registerTab.classList.add('active');
         loginTab.classList.remove('active');
-        registerForm.style.display = 'block';
-        loginForm.style.display = 'none';
+        registerForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
     }
 }
 

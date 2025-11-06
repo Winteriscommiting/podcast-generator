@@ -89,17 +89,41 @@ html {
   font-size: 16px;
   scroll-behavior: smooth;
 }
-html, body {
-  height: 100%;
-}
 
 body {
+  height: 100%;
   font-family: var(--font-family);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
   color: var(--gray-800);
   background-color: var(--white);
   transition: var(--transition);
+  overflow-y: auto;
+}
+
+/* Custom scrollbar styles */
+body::-webkit-scrollbar {
+  width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+  background: var(--gray-200);
+}
+
+body::-webkit-scrollbar-thumb {
+  background: var(--gray-400);
+  border-radius: 6px;
+  border: 2px solid var(--gray-200);
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* Firefox scrollbar */
+body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gray-400) var(--gray-200);
 }
 
 /* Typography */
@@ -984,8 +1008,7 @@ input[type="range"]::-moz-range-thumb {
 /* Dashboard Styles */
 .app-container {
   display: flex;
-  height: 100vh;
-  /* Allow main area to scroll while keeping sidebar full height */
+  min-height: 100vh;
   overflow: visible;
 }
 
@@ -996,6 +1019,27 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   transition: var(--transition);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: var(--gray-100);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
 }
 
 .sidebar-header {
@@ -1154,15 +1198,6 @@ input[type="range"]::-moz-range-thumb {
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* Make main content scrollable when content exceeds viewport */
-  overflow-y: auto;
-  max-height: 100vh;
-}
-
-.main-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .main-header {
@@ -1172,6 +1207,9 @@ input[type="range"]::-moz-range-thumb {
   padding: var(--spacing-md) var(--spacing-lg);
   border-bottom: 1px solid var(--gray-300);
   background-color: var(--white);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-left {

@@ -815,7 +815,7 @@ function openAudioPlayer(podcast, audioUrl) {
     
     // Validate audio URL - check for null, empty, undefined, or example.com
     if (!audioUrl || audioUrl === '' || audioUrl === 'undefined' || audioUrl === 'null' || audioUrl.includes('example.com')) {
-        showToast('This podcast was created with an old version. Please create a new podcast to test the audio player.', 'warning');
+        showToast('This podcast has no audio file. Please regenerate the podcast.', 'warning');
         return;
     }
     
@@ -823,22 +823,34 @@ function openAudioPlayer(podcast, audioUrl) {
     title.textContent = podcast.title;
     meta.textContent = `Document: ${podcast.document ? podcast.document.title : 'Unknown'}`;
     
-    // Build full audio URL if it's a relative path
+    // Build full audio URL - handle both relative and absolute paths
     let fullAudioUrl = audioUrl;
-    if (audioUrl.startsWith('/uploads/')) {
-        fullAudioUrl = `${window.location.origin}${audioUrl}`;
+    if (audioUrl.startsWith('/')) {
+        // Relative path - use API base URL
+        const apiBaseUrl = window.ENV ? window.ENV.getApiUrl() : window.location.origin;
+        fullAudioUrl = `${apiBaseUrl}${audioUrl}`;
+    } else if (!audioUrl.startsWith('http')) {
+        // No protocol, assume relative
+        const apiBaseUrl = window.ENV ? window.ENV.getApiUrl() : window.location.origin;
+        fullAudioUrl = `${apiBaseUrl}/${audioUrl}`;
     }
     
-    console.log('🎵 Loading audio:', fullAudioUrl);
+    console.log('🎵 Loading audio from:', fullAudioUrl);
+    console.log('   Original URL:', audioUrl);
+    console.log('   API Base:', window.ENV ? window.ENV.getApiUrl() : window.location.origin);
     
     // Set audio source with error handling
     audioElement.src = fullAudioUrl;
     currentAudio = audioElement;
     
     // Add error handler
-    audioElement.onerror = function() {
-        showToast('Failed to load audio file. The file may not exist or the URL is incorrect.', 'error');
-        console.error('Audio load error:', fullAudioUrl);
+    audioElement.onerror = function(e) {
+        console.error('❌ Audio load error:', {
+            fullUrl: fullAudioUrl,
+            originalUrl: audioUrl,
+            error: e
+        });
+        showToast('Failed to load audio file. Please check if the file exists.', 'error');
     };
     
     // Add loaded handler
