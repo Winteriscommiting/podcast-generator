@@ -2520,7 +2520,8 @@ async function handleVoiceUpload(e) {
         
         console.log('📤 Sending upload request...');
         
-        const response = await fetch('/api/custom-voices/upload', {
+        const API_BASE = (window.getApiBaseUrl && window.getApiBaseUrl()) || window.location.origin;
+        const response = await fetch(`${API_BASE}/api/custom-voices/upload`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -2931,7 +2932,8 @@ async function monitorTrainingProgress(voiceId) {
     
     const checkProgress = async () => {
         try {
-            const response = await fetch(`/api/hf/training-progress/${voiceId}`);
+        const API_BASE = (window.getApiBaseUrl && window.getApiBaseUrl()) || window.location.origin;
+        const response = await fetch(`${API_BASE}/api/hf/training-progress/${voiceId}`);
             const data = await response.json();
             
             if (data.success) {

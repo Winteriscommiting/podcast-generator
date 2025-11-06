@@ -185,7 +185,8 @@ class VoiceCloneCard extends Component {
                     if (text) formData.append('text', text);
 
                     const token = getAuthToken?.() || localStorage.getItem('authToken') || localStorage.getItem('token');
-                    const resp = await fetch(`/api/custom-voices/${this.voice._id}/convert`, {
+                    const API_BASE = (window.getApiBaseUrl && window.getApiBaseUrl()) || window.location.origin;
+                    const resp = await fetch(`${API_BASE}/api/custom-voices/${this.voice._id}/convert`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`

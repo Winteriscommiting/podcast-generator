@@ -1,6 +1,9 @@
 // API utility functions
 // Automatically use the correct base URL based on environment
-const API_BASE_URL = window.location.origin;
+// Prefer window.APP_CONFIG.API_BASE_URL when provided (e.g., Netlify + external API)
+const API_BASE_URL = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL)
+    ? window.APP_CONFIG.API_BASE_URL.replace(/\/$/, '')
+    : window.location.origin;
 
 // Make API request
 async function apiRequest(endpoint, method = 'GET', data = null, token = null) {
@@ -306,3 +309,5 @@ window.throttle = throttle;
 window.getFileIcon = getFileIcon;
 window.getStatusClass = getStatusClass;
 window.showToast = showToast;
+// expose base url helper
+window.getApiBaseUrl = () => API_BASE_URL;

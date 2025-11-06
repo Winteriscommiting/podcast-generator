@@ -377,7 +377,8 @@ function isValidEmail(email) {
 // Handle Google login
 function handleGoogleLogin() {
     // Redirect to Google OAuth endpoint
-    window.location.href = '/api/auth/google';
+    const base = (window.getApiBaseUrl && window.getApiBaseUrl()) || (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || window.location.origin;
+    window.location.href = `${base}/api/auth/google`;
 }
 
 // Check for token in URL (from OAuth callback)
