@@ -171,16 +171,27 @@ router.delete('/voices/:id', auth, async (req, res) => {
             });
         }
 
-        // Delete from ElevenLabs
-        await elevenLabs.deleteVoice(customVoice.voiceId);
+        // Try to delete from ElevenLabs (don't fail if it doesn't exist there)
+        try {
+            await elevenLabs.deleteVoice(customVoice.voiceId);
+        } catch (elevenLabsError) {
+            console.warn('Could not delete from ElevenLabs (may already be deleted):', elevenLabsError.message);
+            // Continue with local deletion even if ElevenLabs deletion fails
+        }
 
         // Delete from database
         await customVoice.deleteOne();
 
-        // Delete sample files
-        for (const filename of customVoice.sampleFiles) {
-            const filePath = path.join(__dirname, '../uploads/voice-samples', filename);
-            await fs.unlink(filePath).catch(console.error);
+        // Delete sample files (best effort)
+        if (customVoice.sampleFiles && customVoice.sampleFiles.length > 0) {
+            for (const filename of customVoice.sampleFiles) {
+                try {
+                    const filePath = path.join(__dirname, '../uploads/voice-samples', filename);
+                    await fs.unlink(filePath);
+                } catch (fileError) {
+                    console.warn(`Could not delete sample file ${filename}:`, fileError.message);
+                }
+            }
         }
 
         res.json({
