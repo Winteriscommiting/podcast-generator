@@ -1,10 +1,16 @@
 const mongoose = require('mongoose');
 
 const customVoiceSchema = new mongoose.Schema({
-  user: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    index: true
+  },
+  // Also keep 'user' for backwards compatibility
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     index: true
   },
   name: {
@@ -18,29 +24,40 @@ const customVoiceSchema = new mongoose.Schema({
     trim: true,
     maxlength: 500
   },
-  // Audio file stored in GridFS
-  audioFileId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'uploads.files',
-    required: true
-  },
-  audioFileName: {
+  // Voice ID from external service (ElevenLabs, etc.)
+  voiceId: {
     type: String,
     required: true
   },
+  // Provider information
+  provider: {
+    type: String,
+    enum: ['elevenlabs', 'playht', 'rvc', 'custom'],
+    required: true,
+    default: 'elevenlabs'
+  },
+  // Sample files used for cloning
+  sampleFiles: [{
+    type: String
+  }],
+  // Audio file stored in GridFS (optional, for RVC)
+  audioFileId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'uploads.files'
+  },
+  audioFileName: {
+    type: String
+  },
   audioFileSize: {
-    type: Number,
-    required: true
+    type: Number
   },
   // Audio metadata
   duration: {
-    type: Number, // Duration in seconds
-    required: true
+    type: Number // Duration in seconds
   },
   format: {
     type: String,
-    enum: ['mp3', 'wav', 'ogg', 'm4a'],
-    required: true
+    enum: ['mp3', 'wav', 'ogg', 'm4a']
   },
   sampleRate: {
     type: Number,
@@ -50,44 +67,21 @@ const customVoiceSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['uploaded', 'processing', 'ready', 'failed'],
-    default: 'uploaded'
+    default: 'ready'
   },
   processingError: {
     type: String
   },
-  // Voice clone metadata (for future AI service integration)
+  // Voice clone metadata
   voiceModelId: {
-    type: String, // ID from external service (ElevenLabs, Play.ht, etc.)
+    type: String // Alias for voiceId
   },
   voiceProvider: {
-    type: String,
-    enum: ['elevenlabs', 'playht', 'rvc', 'custom', null],
-    default: 'rvc'
+    type: String, // Alias for provider
+    enum: ['elevenlabs', 'playht', 'rvc', 'custom', null]
   },
   modelPath: {
-    type: String, // Path to trained RVC model file
-  },
-  // Hugging Face integration
-  hfRepo: {
-    type: String, // e.g., username/rvc-voice-model
-  },
-  hfRevision: {
-    type: String, // optional commit/tag
-  },
-  rvcBackend: {
-    type: String,
-    enum: ['rvc', 'freevc', 'xtts', 'knn-vc', null],
-    default: 'rvc'
-  },
-  trainingProvider: {
-    type: String,
-    enum: ['local-rvc', 'huggingface', 'none'],
-    default: 'local-rvc'
-  },
-  trainingMode: {
-    type: String,
-    enum: ['trained', 'zero-shot', 'mock'],
-    default: 'trained'
+    type: String // Path to trained RVC model file
   },
   // Voice characteristics
   gender: {
