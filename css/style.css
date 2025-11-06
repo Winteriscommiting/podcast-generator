@@ -1677,6 +1677,16 @@ input[type="range"]::-moz-range-thumb {
   flex: 1;
 }
 
+.podcast-actions .play-btn.playing {
+  background-color: var(--warning);
+  border-color: var(--warning);
+}
+
+.podcast-actions .play-btn.playing:hover {
+  background-color: #d39e00;
+  border-color: #c79100;
+}
+
 /* Stats Dashboard */
 .stats-dashboard {
   display: grid;

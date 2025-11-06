@@ -765,6 +765,30 @@ async function handlePlayPodcast(podcastId, audioUrl) {
         console.log('   Podcast ID:', podcastId);
         console.log('   Audio URL:', audioUrl);
         
+        // Check if this podcast is already playing
+        if (currentPlayingPodcastId === podcastId && currentAudio) {
+            // Toggle play/pause
+            if (currentAudio.paused) {
+                currentAudio.play();
+                updatePlayButtonState(podcastId, 'playing');
+                console.log('▶️ Resuming playback');
+            } else {
+                currentAudio.pause();
+                updatePlayButtonState(podcastId, 'paused');
+                console.log('⏸️ Pausing playback');
+            }
+            return;
+        }
+        
+        // Stop any currently playing audio
+        if (currentAudio && !currentAudio.paused) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+            if (currentPlayingPodcastId) {
+                updatePlayButtonState(currentPlayingPodcastId, 'paused');
+            }
+        }
+        
         // Fetch podcast details
         const response = await apiRequest(`/api/podcasts/${podcastId}`);
         
@@ -793,6 +817,7 @@ async function handlePlayPodcast(podcastId, audioUrl) {
         
         console.log('✅ Regular audio podcast, using audio player');
         // Open audio player modal for regular audio
+        currentPlayingPodcastId = podcastId;
         openAudioPlayer(podcast, audioUrl);
     } catch (error) {
         console.error('❌ Error playing podcast:', error);
@@ -804,6 +829,7 @@ async function handlePlayPodcast(podcastId, audioUrl) {
 let audioPlayerInitialized = false;
 let currentAudio = null;
 let currentPodcast = null;
+let currentPlayingPodcastId = null; // Track currently playing podcast
 
 function openAudioPlayer(podcast, audioUrl) {
     currentPodcast = podcast;
@@ -856,6 +882,23 @@ function openAudioPlayer(podcast, audioUrl) {
     // Add loaded handler
     audioElement.onloadeddata = function() {
         console.log('✅ Audio loaded successfully:', fullAudioUrl);
+    };
+    
+    // Add play/pause event listeners to update button states
+    audioElement.onplay = function() {
+        console.log('▶️ Audio started playing');
+        updatePlayButtonState(currentPlayingPodcastId, 'playing');
+    };
+    
+    audioElement.onpause = function() {
+        console.log('⏸️ Audio paused');
+        updatePlayButtonState(currentPlayingPodcastId, 'paused');
+    };
+    
+    audioElement.onended = function() {
+        console.log('🏁 Audio ended');
+        updatePlayButtonState(currentPlayingPodcastId, 'paused');
+        currentPlayingPodcastId = null;
     };
     
     // Reset play button
@@ -976,6 +1019,26 @@ async function playWithBrowserTTS(podcast) {
         console.error('Browser TTS error:', error);
         showToast('Failed to speak text', 'error');
     }
+}
+
+/**
+ * Update play button state for a specific podcast card
+ */
+function updatePlayButtonState(podcastId, state) {
+    if (!podcastId) return;
+    
+    // Find all play buttons for this podcast
+    const playButtons = document.querySelectorAll(`.play-btn[data-id="${podcastId}"]`);
+    
+    playButtons.forEach(button => {
+        if (state === 'playing') {
+            button.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            button.classList.add('playing');
+        } else {
+            button.innerHTML = '<i class="fas fa-play"></i> Play';
+            button.classList.remove('playing');
+        }
+    });
 }
 
 function initAudioPlayer() {
