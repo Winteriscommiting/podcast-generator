@@ -537,15 +537,14 @@ function setupHistoryManagement() {
     window.addEventListener('popstate', function(event) {
         const token = localStorage.getItem('token');
         const currentPath = window.location.pathname;
+        const previousState = event.state;
         
-        // If user goes back and they were logged in, log them out
-        if (token) {
-            console.log('Browser back/forward detected while logged in - logging out');
+        // Only logout if going back FROM authenticated page TO login page
+        if (token && currentPath.includes('login.html') && previousState && previousState.page === 'dashboard') {
+            console.log('Browser back detected from dashboard to login - logging out');
             localStorage.removeItem('token');
             localStorage.removeItem('rememberMe');
-            
-            // Redirect to login without adding to history
-            window.location.replace('login.html');
+            return;
         }
         
         // Prevent auto-login when using forward button
